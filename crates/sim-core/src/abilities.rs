@@ -23,11 +23,15 @@ pub struct Abilities {
 /// Diet share at or above which a creature hunts.
 pub const HUNTER_DIET: Fx = Fx::ratio(3, 10);
 
+/// A hunter can eat prey up to this share of its own size. [Provisional], S0 tuning.
+pub const PREY_SIZE_RATIO: Fx = Fx::ratio(7, 10);
+
 impl Abilities {
     /// Per-tick rates (speed, bite, upkeep) are divided by `scale` (ticks per reference tick).
     pub fn from_genome(g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
+        // Prey must be clearly smaller (PREY_SIZE_RATIO), so equals cannot eat each other.
         let max_prey_size = if g.diet >= HUNTER_DIET {
-            g.size
+            sat.mul(g.size, PREY_SIZE_RATIO)
         } else {
             Fx::ZERO
         };
@@ -37,15 +41,18 @@ impl Abilities {
         };
         let plant_share = sat.sub(Fx::ONE, g.diet);
         let bite = {
-            let b = sat.mul(g.size, plant_share);
+            // Bite grows more slowly than size (√size), so a bigger body is not a better grazer per unit cost.
+            let root = sat.sqrt(g.size);
+            let b = sat.mul(root, plant_share);
             sat.mul(b, Fx::ratio(3, 2))
         };
-        // Upkeep: 0.05 + 0.1·size + 0.15·size·speed² + 0.03·sense.
+        // Upkeep: 0.05 + 0.04·size² + 0.15·size·speed² + 0.03·sense. Body cost grows faster than size.
         let upkeep = {
             let v2 = sat.mul(g.speed, g.speed);
             let sv2 = sat.mul(g.size, v2);
             let move_cost = sat.mul(sv2, Fx::ratio(15, 100));
-            let body = sat.mul(g.size, Fx::ratio(1, 10));
+            let s2 = sat.mul(g.size, g.size);
+            let body = sat.mul(s2, Fx::ratio(4, 100));
             let senses = sat.mul(g.sense_range, Fx::ratio(3, 100));
             let a = sat.add(Fx::ratio(5, 100), body);
             let b = sat.add(a, move_cost);
@@ -64,7 +71,8 @@ impl Abilities {
         }
     }
 
-    /// Predation rule (entry #54): A may attack B only if A hunts and B is no bigger than A's prey limit.
+    /// Predation rule (entry #54): A may attack B only if A hunts and B is no bigger than A's prey limit
+    /// (0.7 × A's size; S0 tuning changed this from 1.0 to stop same-size cannibalism).
     pub fn can_eat(&self, prey: &Abilities) -> bool {
         self.max_prey_size > Fx::ZERO && prey.size <= self.max_prey_size
     }

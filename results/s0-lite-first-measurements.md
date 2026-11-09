@@ -88,3 +88,20 @@ Full table: `runs/batch/summary.tsv` (not committed; re-run to regenerate).
   depend on it: one lineage, one tight trait cloud.
 - E3 side note: with the moon, about a third of births happen on tidal flats; without it, none. The habitat
   attribution works; whether that makes lineages *differ* can't be seen while every run is a monoculture.
+
+## Survival and diversity, after the size rules (S0 tuning step 1)
+
+Changes in `abilities.rs` **[Provisional]**: prey ≤ 0.7 × predator size (was 1.0); body upkeep 0.04·size²
+(was 0.1·size); bite ∝ √size (was ∝ size). Same command and seeds as above (~20 min on 10 threads).
+
+| Config | Survived | ≥ 5 clusters | Clusters per seed (1–10) | Mean |
+|---|---|---|---|---|
+| base (moon) | 10/10 | 0/10 | 3 1 1 3 2 1 3 2 1 3 | 2.0 |
+| tides-off | 10/10 | 0/10 | 2 1 1 1 1 2 2 1 2 1 | 1.4 |
+
+- Still fails the ≥ 5 clusters gate, but no longer a single strategy: runs now split into distinct niches,
+  e.g. big slow semi-hunters (size ~3, diet ~0.3) alongside small fast grazers (size ~0.4, speed ~1.0–1.4).
+- Predation fell from ~70% to ~25% of deaths; starvation is now the main cause.
+- E3 hint: worlds with a moon average more clusters (2.0 vs 1.4). Too few seeds to call it; E3 proper decides.
+- Populations doubled (~1,700–2,500 on 64×32) and generation time rose to ~72–80 ticks, so a 2,000-generation
+  run takes ~10 min each.
