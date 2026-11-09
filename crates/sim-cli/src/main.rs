@@ -2,9 +2,14 @@
 //!
 //!   sim-cli determinism [--ticks N] [--seed S] [--width W --height H]
 //!   sim-cli timing      [--ticks N] [--warmup N] [--repeats R] [--seed S]
+//!   sim-cli export      [--ticks N] [--every K] [--seed S] [--width W --height H] [--out FILE]
+//!   sim-cli chase-clips [--scales 1,2,4,8] [--clips N] [--warmup N] [--window N] [--seed S] [--out DIR]
 //!
 //! ponytail: hand-rolled flag parsing; add a parser crate when there are more than a handful of flags.
 
+mod export;
+
+use sim_core::fixed::Fx;
 use sim_core::{InitialWorldConfig, SimParams, World};
 use std::time::Instant;
 
@@ -17,6 +22,13 @@ fn flag(args: &[String], name: &str, default: u64) -> u64 {
                 .unwrap_or_else(|_| panic!("{name} needs a number"))
         })
         .unwrap_or(default)
+}
+
+fn text<'a>(args: &'a [String], name: &str, default: &'a str) -> &'a str {
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .map_or(default, String::as_str)
 }
 
 fn config(args: &[String], width: u64, height: u64) -> InitialWorldConfig {
@@ -148,8 +160,33 @@ fn main() {
     match args.get(1).map(String::as_str) {
         Some("determinism") => determinism(&args),
         Some("timing") => timing(&args),
+        Some("export") => export::export(
+            flag(&args, "--seed", 1),
+            config(&args, 96, 48),
+            flag(&args, "--ticks", 2_000),
+            flag(&args, "--every", 5).max(1),
+            text(&args, "--out", "runs/export/world.jsonl"),
+        ),
+        Some("chase-clips") => {
+            let scales: Vec<u32> = text(&args, "--scales", "1,2,4,8")
+                .split(',')
+                .map(|s| s.parse().expect("--scales takes numbers like 1,2,4,8"))
+                .collect();
+            export::chase_clips(
+                flag(&args, "--seed", 1),
+                config(&args, 64, 32),
+                &scales,
+                flag(&args, "--clips", 4) as usize,
+                flag(&args, "--warmup", 1_000),
+                flag(&args, "--window", 12),
+                Fx::from_int(flag(&args, "--radius", 6) as i32),
+                text(&args, "--out", "runs/chase-clips"),
+            )
+        }
         _ => {
-            eprintln!("usage: sim-cli determinism|timing [flags]  (see source header)");
+            eprintln!(
+                "usage: sim-cli determinism|timing|export|chase-clips [flags]  (see source header)"
+            );
             std::process::exit(2);
         }
     }

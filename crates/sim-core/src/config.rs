@@ -58,6 +58,11 @@ pub struct SimParams {
     /// Share of a dead body's energy returned to the cell as nutrients.
     pub nutrient_return: Fx,
     pub mutation_step: Fx,
+    /// Ticks per reference tick (chase measurement, validation_plan.md S0-lite). At scale s,
+    /// per-tick rates (speed, upkeep, bite, plant growth, exposure) are divided by s, and
+    /// lifespan, maturity and environment periods are multiplied by s. 1 = reference.
+    /// ponytail: attack attempts are not rescaled, so finer scales give more tries per encounter.
+    pub tick_scale: u32,
 }
 
 impl Default for SimParams {
@@ -72,6 +77,7 @@ impl Default for SimParams {
             predation_efficiency: Fx::ratio(1, 2),
             nutrient_return: Fx::ratio(3, 10),
             mutation_step: Fx::ratio(5, 100),
+            tick_scale: 1,
         }
     }
 }

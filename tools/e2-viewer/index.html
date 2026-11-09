@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E2 Replay Viewer</title>
+<style>
+  :root { --bg:#111418; --panel:#1a1f26; --text:#d8dde3; --muted:#8a94a0; --accent:#e8b04a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; }
+  header { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:8px 16px; background:var(--panel); }
+  header label { color:var(--muted); }
+  main { display:grid; grid-template-columns: minmax(0,1fr) 320px; gap:12px; padding:12px 16px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  canvas { width:100%; background:#000; display:block; image-rendering:pixelated; }
+  .panel { background:var(--panel); padding:8px 10px; border-radius:6px; margin-bottom:12px; }
+  .panel h2 { margin:0 0 6px; font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  #feed { height:260px; overflow-y:auto; font:12px/1.5 ui-monospace, monospace; }
+  #feed .eaten { color:#ff8a7a; } #feed .birth { color:#9fd49f; }
+  #life { font:12px/1.5 ui-monospace, monospace; white-space:pre-wrap; min-height:80px; }
+  button, select, input { font:inherit; }
+  #tick { font-variant-numeric: tabular-nums; min-width:9ch; display:inline-block; }
+  .clip-only, .world-only { display:none; }
+  body.clips .clip-only, body.world .world-only { display:revert; }
+</style>
+</head>
+<body>
+<header>
+  <input type="file" id="file" accept=".jsonl,.json">
+  <button id="play" disabled>Play</button>
+  <label class="world-only">speed <select id="speed"><option>5</option><option selected>15</option><option>30</option><option>60</option></select> frames/s</label>
+  <label class="clip-only">clip <select id="clip"></select></label>
+  <label class="clip-only"><input type="checkbox" id="mark" checked> mark the pair</label>
+  <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px">
+  <span>tick <span id="tick">-</span></span>
+</header>
+<main>
+  <div>
+    <canvas id="map" width="960" height="480"></canvas>
+    <div class="panel world-only" style="margin-top:12px">
+      <h2>Lineage populations (largest 12 founder lineages)</h2>
+      <canvas id="tree" width="960" height="160"></canvas>
+    </div>
+  </div>
+  <div>
+    <div class="panel world-only"><h2>Feed</h2><div id="feed"></div></div>
+    <div class="panel world-only"><h2>Life history (click a creature)</h2><div id="life">-</div></div>
+    <div class="panel"><h2>About this file</h2><div id="about">Open an export from <code>sim-cli export</code> or <code>sim-cli chase-clips</code>.</div></div>
+  </div>
+</main>
+<script src="viewer.js"></script>
+</body>
+</html>

@@ -24,7 +24,8 @@ pub struct Abilities {
 pub const HUNTER_DIET: Fx = Fx::ratio(3, 10);
 
 impl Abilities {
-    pub fn from_genome(g: &Genome, sat: &mut Sat) -> Abilities {
+    /// Per-tick rates (speed, bite, upkeep) are divided by `scale` (ticks per reference tick).
+    pub fn from_genome(g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
         let max_prey_size = if g.diet >= HUNTER_DIET {
             g.size
         } else {
@@ -50,8 +51,10 @@ impl Abilities {
             let b = sat.add(a, move_cost);
             sat.add(b, senses)
         };
+        let bite = sat.div(bite, scale);
+        let upkeep = sat.div(upkeep, scale);
         Abilities {
-            max_speed: g.speed,
+            max_speed: sat.div(g.speed, scale),
             size: g.size,
             max_prey_size,
             sense_range: g.sense_range,

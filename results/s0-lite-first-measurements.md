@@ -42,3 +42,28 @@ The second reference machine (x86-64) has not been run yet. That check is S1.
 *   **Survival and diversity check:** at least 8 of 10 seeds surviving 2,000 generations with at least 5 trait clusters. This needs the `batch` subcommand.
 *   **Contest-order bias test** (Q9).
 *   **Hours spent:** not recorded for this session.
+
+## Chase clips (tooling ready; viewer judging not done)
+
+`sim-cli chase-clips --scales 1,2,4,8 --clips 4` (seed 1, 64×32, 1,000 reference ticks of warm-up).
+`tick_scale = s` divides per-tick rates by s and multiplies lifespans and periods by s.
+`tick_scale = 1` leaves history bit-identical (hash `25414f3850ed5e42` at 3,000 ticks, before and after).
+
+| Scale | Encounter ticks (median of 4) | Measured ticks per lifetime (generation time) |
+|---|---|---|
+| 1 | 2 | 50 |
+| 2 | 2 | 96 |
+| 4 | 6 | 180 |
+| 8 | 31 | 502 |
+
+- "Encounter ticks" = consecutive ticks before the kill with the prey inside the predator's sense range.
+- At the reference scale a hunt is 1–3 ticks, so it will almost certainly read as "appearing next to each other".
+  That is a prediction; the measurement is the 3-viewer judgement on the shuffled clips.
+- Cost: from the timing run, ~1.7M updates/s at 64×32. At scale 8 (~500 ticks per generation, ~530 creatures)
+  that is ~380 generations per minute, still above the provisional 300-by-minute-25 target. Needs confirming
+  at the world size the opening uses.
+
+## Whole-world export, side observation
+
+`sim-cli export` (seed 1, 96×48, 2,000 ticks): 68% of deaths (95,032 of 139,310) are predation (S0-lite constants untuned).
+Predation this dominant is a tuning question for S0, not a tooling bug.

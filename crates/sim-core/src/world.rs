@@ -39,7 +39,8 @@ impl World {
             .map(|f| {
                 let id = EntityId::founder(f);
                 let genome = Genome::founder(seed, id, &mut sat);
-                let abilities = Abilities::from_genome(&genome, &mut sat);
+                let scale = Fx::from_int(params.tick_scale as i32);
+                let abilities = Abilities::from_genome(&genome, scale, &mut sat);
                 let w = Fx::from_int(config.width as i32);
                 let h = Fx::from_int(config.height as i32);
                 let px = unit(draw(seed, id, 0, Purpose::Place, 0));
@@ -135,9 +136,11 @@ impl World {
         let seed = self.seed;
         let sat = &mut self.sat;
         let grid = &self.grid;
+        let s = self.params.tick_scale;
+        let scale = Fx::from_int(s as i32);
 
         // 1. Input-log entries for this tick.
-        let mut env_dirty = t.is_multiple_of(self.params.env_interval);
+        let mut env_dirty = t.is_multiple_of(self.params.env_interval * s as u64);
         for e in self.input.at(t) {
             match e.action.kind {
                 ActionKind::TemperatureOffset(v) => {
@@ -153,7 +156,8 @@ impl World {
         }
         // 2. Environment, if due.
         if env_dirty {
-            self.env.update(t, &self.config, &self.params, grid, sat);
+            self.env
+                .update(t / s as u64, &self.config, &self.params, grid, sat);
         }
         self.env.grow_plants(&self.params, sat);
 
@@ -224,6 +228,7 @@ impl World {
             if dev > Fx::ZERO {
                 exposed[i] = true;
                 let pen = sat.mul(dev, Fx::ratio(2, 100));
+                let pen = sat.div(pen, scale);
                 cost = sat.add(cost, pen);
             }
             c.energy = sat.sub(c.energy, cost);
@@ -239,14 +244,14 @@ impl World {
             }
             let c = &self.creatures[i];
             let twice = sat.add(c.genome.repro_energy, c.genome.repro_energy);
-            if c.age < c.genome.maturity_ticks || c.energy < twice {
+            if c.age < c.genome.maturity_ticks * s || c.energy < twice {
                 continue;
             }
             let child_id = EntityId::child(c.id, c.next_child);
             let genome = c
                 .genome
                 .mutated(seed, child_id, t, self.params.mutation_step, sat);
-            let abilities = Abilities::from_genome(&genome, sat);
+            let abilities = Abilities::from_genome(&genome, scale, sat);
             let ox = unit(draw(seed, child_id, t, Purpose::Place, 0));
             let oy = unit(draw(seed, child_id, t, Purpose::Place, 1));
             let ox = sat.sub(ox, Fx::ratio(1, 2));
@@ -298,7 +303,7 @@ impl World {
                 } else {
                     DeathCause::Starved
                 }
-            } else if c.age >= c.genome.lifespan_ticks {
+            } else if c.age >= c.genome.lifespan_ticks * s {
                 DeathCause::OldAge
             } else {
                 continue;

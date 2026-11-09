@@ -131,6 +131,7 @@ impl Environment {
             let from_nutrients = self.nutrients[i].min(Fx::ratio(1, 4));
             self.nutrients[i] = sat.sub(self.nutrients[i], from_nutrients);
             let g = sat.add(base, from_nutrients);
+            let g = sat.div(g, Fx::from_int(p.tick_scale as i32));
             self.plant[i] = sat.add(self.plant[i], g).min(p.plant_cap);
         }
     }
