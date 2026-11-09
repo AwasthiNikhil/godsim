@@ -67,3 +67,24 @@ The second reference machine (x86-64) has not been run yet. That check is S1.
 
 `sim-cli export` (seed 1, 96×48, 2,000 ticks): 68% of deaths (95,032 of 139,310) are predation (S0-lite constants untuned).
 Predation this dominant is a tuning question for S0, not a tooling bug.
+
+## Survival and diversity check — survival PASS, diversity FAIL
+
+`sim-cli batch --seeds 10 --generations 2000 --configs base,tides-off` (64×32, ~63 s on 10 threads).
+Full table: `runs/batch/summary.tsv` (not committed; re-run to regenerate).
+
+| Config | Survived 2,000 generations | ≥ 5 trait clusters | Births on tidal flats |
+|---|---|---|---|
+| base (moon) | 10/10 | 0/10 | 29.8–41.6% |
+| tides-off (no moon) | 10/10 | 0/10 | 0% |
+
+- Every run ends as **one founder lineage** of near-maximum-size omnivores (size ≈ 4.97 of 5, diet ≈ 0.55):
+  317 of a 318-creature sample fall in one cluster. 70–80% of all deaths are predation, mostly within that lineage.
+- Likely cause, from the rules: size has no counterweight. A bigger body bites more plants (bite ∝ size),
+  can eat everything its own size or smaller (prey size ≤ predator size), and costs little (upkeep 0.1·size,
+  plus movement ∝ size·speed²). So "be the biggest omnivore" beats everything, and peers eat each other.
+- Trait-cluster definition used (the design does not fix one) **[Provisional]**: single-linkage on
+  `Genome::distance` ≤ 0.5 over a ≤400 sample, clusters ≥ 2% of the sample. The monoculture result does not
+  depend on it: one lineage, one tight trait cloud.
+- E3 side note: with the moon, about a third of births happen on tidal flats; without it, none. The habitat
+  attribution works; whether that makes lineages *differ* can't be seen while every run is a monoculture.

@@ -3,10 +3,12 @@
 //!   sim-cli determinism [--ticks N] [--seed S] [--width W --height H]
 //!   sim-cli timing      [--ticks N] [--warmup N] [--repeats R] [--seed S]
 //!   sim-cli export      [--ticks N] [--every K] [--seed S] [--width W --height H] [--out FILE]
+//!   sim-cli batch       [--seeds 10] [--generations 2000] [--configs base,tides-off] [--width W --height H] [--out DIR]
 //!   sim-cli chase-clips [--scales 1,2,4,8] [--clips N] [--warmup N] [--window N] [--seed S] [--out DIR]
 //!
 //! ponytail: hand-rolled flag parsing; add a parser crate when there are more than a handful of flags.
 
+mod batch;
 mod export;
 
 use sim_core::fixed::Fx;
@@ -167,6 +169,16 @@ fn main() {
             flag(&args, "--every", 5).max(1),
             text(&args, "--out", "runs/export/world.jsonl"),
         ),
+        Some("batch") => {
+            let configs: Vec<&str> = text(&args, "--configs", "base").split(',').collect();
+            batch::batch(
+                config(&args, 64, 32),
+                &configs,
+                flag(&args, "--seeds", 10),
+                flag(&args, "--generations", 2_000),
+                text(&args, "--out", "runs/batch"),
+            )
+        }
         Some("chase-clips") => {
             let scales: Vec<u32> = text(&args, "--scales", "1,2,4,8")
                 .split(',')
@@ -185,7 +197,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "usage: sim-cli determinism|timing|export|chase-clips [flags]  (see source header)"
+                "usage: sim-cli determinism|timing|export|batch|chase-clips [flags]  (see source header)"
             );
             std::process::exit(2);
         }

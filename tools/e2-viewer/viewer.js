@@ -76,7 +76,8 @@ $("mark").onchange = draw;
 
 function draw() {
   const f = frames()[frame];
-  $("tick").textContent = f.tick;
+  // Clips show elapsed reference time, never the raw tick: tick numbers would reveal the scale.
+  $("tick").textContent = data.clips ? (frame * current().frame_ms / 250).toFixed(1) : f.tick;
   if (data.clips) drawClip(f); else { drawWorld(f); drawFeed(f.tick); drawLineages(); }
 }
 
@@ -92,7 +93,7 @@ function drawWorld(f) {
     g.fillRect(x * s, (H - 1 - y) * s, s, s);
   }
   for (const [n, x, y, root, size, diet] of f.c) {
-    const px = x * s, py = (H - y) * s, r = Math.max(1.5, size * s * 0.35);
+    const px = x * s, py = (H - y) * s, r = Math.max(1.5, Math.sqrt(size) * s * 0.2);
     g.fillStyle = lineageColour(root);
     g.beginPath(); g.arc(px, py, r, 0, 7); g.fill();
     if (diet >= 0.3) { g.strokeStyle = "#ff4a3a"; g.lineWidth = 1.5; g.stroke(); }
@@ -178,7 +179,7 @@ function drawClip(f) {
   g.fillStyle = "#1d2a1c"; g.fillRect(0, 0, cv.width, cv.height);
   const ox = cv.width / 2, oy = cv.height / 2;
   const wrap = (dx) => ((dx + W / 2) % W + W) % W - W / 2;
-  for (const [n, x, y, root, size, diet] of f.c) {
+  for (const [n, x, y, root, size] of f.c) {
     const px = ox + wrap(x - c.cx) * s, py = oy - (y - c.cy) * s;
     const r = Math.max(3, size * s * 0.3);
     g.fillStyle = lineageColour(root);
