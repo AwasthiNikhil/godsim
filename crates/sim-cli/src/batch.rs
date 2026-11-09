@@ -24,7 +24,7 @@ pub struct Cluster {
 }
 
 /// ponytail: O(n²) single-linkage on a 400-creature sample; fine for a once-per-run summary.
-pub fn clusters(cs: &[Creature]) -> Vec<Cluster> {
+pub fn clusters(cs: &[Creature], link: Fx) -> Vec<Cluster> {
     let step = cs.len().div_ceil(SAMPLE).max(1);
     let s: Vec<&Creature> = cs.iter().step_by(step).collect();
     let mut parent: Vec<usize> = (0..s.len()).collect();
@@ -38,7 +38,7 @@ pub fn clusters(cs: &[Creature]) -> Vec<Cluster> {
     let mut sat = Sat::default();
     for i in 0..s.len() {
         for j in i + 1..s.len() {
-            if s[i].genome.distance(&s[j].genome, &mut sat) <= LINK {
+            if s[i].genome.distance(&s[j].genome, &mut sat) <= link {
                 let (a, b) = (root(&mut parent, i), root(&mut parent, j));
                 parent[a] = b;
             }
@@ -114,7 +114,12 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     }
     let alive = !w.creatures().is_empty();
     let survived = alive && gens >= generations;
-    let cl = clusters(w.creatures());
+    let cl = clusters(w.creatures(), LINK);
+    // Diagnostic: the same population counted at stricter links, plus the spread of each trait.
+    let strict: Vec<(f64, usize)> = [Fx::ratio(35, 100), Fx::ratio(25, 100), Fx::ratio(15, 100)]
+        .iter()
+        .map(|&l| (l.raw() as f64 / 65536.0, clusters(w.creatures(), l).len()))
+        .collect();
 
     let mut by_hab: BTreeMap<Habitat, u64> = BTreeMap::new();
     for (&(_, h), &n) in &habitat.births {
@@ -168,6 +173,32 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     for c in &cl {
         let [a, b, d, e] = c.mean;
         let _ = writeln!(r, "{:>6} {a:>6.2} {b:>6.2} {d:>6.2} {e:>6.2}", c.size);
+    }
+    let _ = write!(r, "\nclusters at stricter links:");
+    for (l, n) in &strict {
+        let _ = write!(r, "  {l:.2} → {n}");
+    }
+    let _ = writeln!(r, "\n\ntrait spread (10th–90th percentile, and as a share of the trait's full range)");
+    let f = |v: Fx| v.raw() as f64 / 65536.0;
+    let g = |c: &Creature| {
+        let t = &c.genome;
+        [t.size, t.speed, t.diet, t.sense_range, t.repro_energy, t.temp_opt, t.temp_tol]
+    };
+    let names = ["size", "speed", "diet", "sense", "repro_energy", "temp_opt", "temp_tol"];
+    let full = [4.8, 1.9, 1.0, 5.0, 38.0, 40.0, 23.0];
+    for k in 0..names.len() {
+        let mut v: Vec<f64> = w.creatures().iter().map(|c| f(g(c)[k])).collect();
+        v.sort_by(f64::total_cmp);
+        if v.is_empty() {
+            break;
+        }
+        let (lo, hi) = (v[v.len() / 10], v[v.len() * 9 / 10]);
+        let _ = writeln!(
+            r,
+            "{:>13} {lo:>7.2} – {hi:>7.2}  ({:>3.0}%)",
+            names[k],
+            (hi - lo) * 100.0 / full[k]
+        );
     }
     let _ = writeln!(r, "\nhabitat attribution (births over the whole run)");
     for (h, n) in &by_hab {

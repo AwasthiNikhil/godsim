@@ -119,3 +119,26 @@ Code kept as `results/refuge-experiment.patch` (apply with `git apply`).
 
 Why it likely did nothing: the dominant group is small grazers (size ~0.8, diet ~0.1) that could already enter
 deep water, and hunters are rare (~25% of deaths), so a refuge from hunters protects almost no one.
+
+## Diagnostic: is variety missing, or hidden by the cluster rule?
+
+`batch --seeds 5 --generations 500` with cluster counts at stricter links and the trait spread of the final population.
+
+| Seed | link 0.50 | 0.35 | 0.25 | 0.15 | size spread | speed spread | temp_opt spread |
+|---|---|---|---|---|---|---|---|
+| 1 | 2 | 3 | 1 | 2 | 44% | 61% | 33% |
+| 2 | 2 | 1 | 1 | 2 | 17% | 45% | 20% |
+| 3 | 1 | 3 | 5 | 0 | 50% | 72% | 42% |
+| 4 | 2 | 1 | 4 | 0 | 49% | 67% | 38% |
+| 5 | 1 | 1 | 6 | 0 | 48% | 62% | 34% |
+
+(Spread = 10th–90th percentile as a share of the trait's full range.)
+
+1. **Variety exists but as one continuous cloud.** Size and speed span roughly half their ranges, but the
+   cluster count jumps around with the threshold (0.25 → 6, 0.15 → 0 in seed 5). There are no stable, separate
+   groups for any threshold to find. The count is measuring the rule, not the world.
+2. **Two traits are pinned at their limits because they cost nothing:**
+   - `temp_tol` sits at 18–25 (max 25). Wide tolerance is free, so everyone tolerates every climate and
+     climate cannot split populations into regional types.
+   - `repro_energy` sits at 2–5.5 (min 2): offspring as cheap as allowed.
+   A trait with no cost always runs to its limit; these two remove the main source of regional niches.
