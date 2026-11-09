@@ -1,0 +1,68 @@
+diff --git a/crates/sim-core/src/environment.rs b/crates/sim-core/src/environment.rs
+index b0d0dcb..a0b4aa9 100644
+--- a/crates/sim-core/src/environment.rs
++++ b/crates/sim-core/src/environment.rs
+@@ -20,11 +20,11 @@ impl Habitat {
+     /// Plant growth multiplier. ponytail: fixed table; [Provisional].
+     fn fertility(self) -> Fx {
+         match self {
+-            Habitat::DeepWater => Fx::ratio(1, 5),
++            Habitat::DeepWater => Fx::ratio(1, 2),
+             Habitat::ShallowWater => Fx::ratio(9, 10),
+             Habitat::TidalFlat => Fx::ratio(13, 10),
+             Habitat::Lowland => Fx::ONE,
+-            Habitat::Highland => Fx::ratio(2, 5),
++            Habitat::Highland => Fx::ratio(7, 10),
+         }
+     }
+ }
+diff --git a/crates/sim-core/src/world.rs b/crates/sim-core/src/world.rs
+index fd16fef..862ae0e 100644
+--- a/crates/sim-core/src/world.rs
++++ b/crates/sim-core/src/world.rs
+@@ -4,7 +4,7 @@ use crate::abilities::Abilities;
+ use crate::behaviour::{self, Buckets, Intent};
+ use crate::config::{InitialWorldConfig, SimParams};
+ use crate::creature::Creature;
+-use crate::environment::Environment;
++use crate::environment::{Environment, Habitat};
+ use crate::fixed::{Fx, Sat};
+ use crate::genome::Genome;
+ use crate::hash;
+@@ -172,8 +172,13 @@ impl World {
+             .enumerate()
+             .map(|(i, &it)| behaviour::step(i, it, &self.creatures, grid, sat))
+             .collect();
++        // Refuges: a creature that may not enter the target cell stays where it is.
+         for (c, p) in self.creatures.iter_mut().zip(moved) {
+-            c.pos = p;
++            let from = grid.cell_at(c.pos);
++            let to = grid.cell_at(p);
++            if from == to || can_enter(c, to.0 as usize, &self.env, sat) {
++                c.pos = p;
++            }
+         }
+ 
+         // 6. Interactions: attacks resolve in attacker ID order (= index order).
+@@ -346,3 +351,21 @@ impl World {
+         }
+     }
+ }
++
++/// Largest body that can enter deep water. [Provisional], S0 tuning.
++pub const DEEP_WATER_MAX_SIZE: Fx = Fx::ONE;
++
++/// Refuges (habitat variety, validation_plan.md S0-lite "fail → reconsider"):
++/// - deep water admits only small bodies, so large hunters cannot follow prey there;
++/// - highland admits only creatures whose temperature tolerance covers the cell's temperature,
++///   so warm-adapted hunters cannot follow cold-adapted prey uphill.
++fn can_enter(c: &Creature, cell: usize, env: &Environment, sat: &mut Sat) -> bool {
++    match env.habitat[cell] {
++        Habitat::DeepWater => c.genome.size <= DEEP_WATER_MAX_SIZE,
++        Habitat::Highland => {
++            let off = sat.sub(env.temperature[cell], c.genome.temp_opt);
++            Fx::from_raw(off.raw().abs()) <= c.genome.temp_tol
++        }
++        _ => true,
++    }
++}

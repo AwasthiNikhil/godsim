@@ -105,3 +105,17 @@ Changes in `abilities.rs` **[Provisional]**: prey ≤ 0.7 × predator size (was 
 - E3 hint: worlds with a moon average more clusters (2.0 vs 1.4). Too few seeds to call it; E3 proper decides.
 - Populations doubled (~1,700–2,500 on 64×32) and generation time rose to ~72–80 ticks, so a 2,000-generation
   run takes ~10 min each.
+
+## Refuges experiment (S0 tuning step 2) — no effect, reverted
+
+Tried habitat refuges: deep water admits only bodies of size ≤ 1; highland admits only creatures whose
+temperature tolerance covers the cell; deep-water fertility 0.2 → 0.5, highland 0.4 → 0.7.
+Code kept as `results/refuge-experiment.patch` (apply with `git apply`).
+
+| 5 seeds × 500 generations | Clusters per seed | Mean |
+|---|---|---|
+| before | 2 2 1 2 1 | 1.6 |
+| with refuges | 1 1 1 2 3 | 1.6 |
+
+Why it likely did nothing: the dominant group is small grazers (size ~0.8, diet ~0.1) that could already enter
+deep water, and hunters are rare (~25% of deaths), so a refuge from hunters protects almost no one.
