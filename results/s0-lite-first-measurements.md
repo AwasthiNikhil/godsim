@@ -142,3 +142,18 @@ deep water, and hunters are rare (~25% of deaths), so a refuge from hunters prot
      climate cannot split populations into regional types.
    - `repro_energy` sits at 2–5.5 (min 2): offspring as cheap as allowed.
    A trait with no cost always runs to its limit; these two remove the main source of regional niches.
+
+## Temperature tolerance costs energy (S0 tuning step 3)
+
+Upkeep gains `0.004 · temp_tol` (tolerance 25 adds 0.1 per tick) **[Provisional]**. Same 5 seeds × 500 generations.
+
+| | Clusters at link 0.50 (seeds 1–5) | Mean | at 0.35 | Mean | temp_tol range | temp_opt spread |
+|---|---|---|---|---|---|---|
+| before | 2 2 1 2 1 | 1.6 | 3 1 3 1 1 | 1.8 | 18–25 (pinned at max) | 20–42% |
+| after | 3 1 1 3 3 | 2.2 | 3 3 4 4 4 | 3.6 | 8–24 (spread out) | 43–63% |
+
+- Tolerance is no longer pinned: creatures now range from climate specialists to generalists, and
+  preferred temperature spreads much wider. Size spread also rose (17–50% → 57–67%).
+- Still 0/5 reach 5 clusters at the provisional link 0.50; stricter links now give 4–9. The verdict
+  depends on the cluster definition (open question for the author).
+- `repro_energy` is still pinned near its minimum (2–6 of 2–40).

@@ -46,7 +46,8 @@ impl Abilities {
             let b = sat.mul(root, plant_share);
             sat.mul(b, Fx::ratio(3, 2))
         };
-        // Upkeep: 0.05 + 0.04·size² + 0.15·size·speed² + 0.03·sense. Body cost grows faster than size.
+        // Upkeep: 0.05 + 0.04·size² + 0.15·size·speed² + 0.03·sense + 0.004·temp_tol.
+        // Body cost grows faster than size; wide temperature tolerance costs energy, so climate specialists can win.
         let upkeep = {
             let v2 = sat.mul(g.speed, g.speed);
             let sv2 = sat.mul(g.size, v2);
@@ -56,7 +57,9 @@ impl Abilities {
             let senses = sat.mul(g.sense_range, Fx::ratio(3, 100));
             let a = sat.add(Fx::ratio(5, 100), body);
             let b = sat.add(a, move_cost);
-            sat.add(b, senses)
+            let c = sat.add(b, senses);
+            let tolerance = sat.mul(g.temp_tol, Fx::ratio(4, 1000));
+            sat.add(c, tolerance)
         };
         let bite = sat.div(bite, scale);
         let upkeep = sat.div(upkeep, scale);
