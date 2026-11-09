@@ -1,0 +1,4 @@
+# Part of the "build" that determinism is scoped to. Changing it is a new build.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]

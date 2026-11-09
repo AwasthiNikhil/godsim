@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["crates/sim-core", "crates/sim-cli"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+# Overflow checks ON in every build (author decision, 2026-11-09).
+# fixed.rs uses explicit saturating ops; any other integer overflow panics,
+# identically in debug and release.
+[profile.dev]
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "abort"
+overflow-checks = true

@@ -1,0 +1,10 @@
+[package]
+name = "sim-cli"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+sim-core = { path = "../sim-core", features = ["ground-truth"] }
+
+[lints]
+workspace = true

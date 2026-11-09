@@ -1,0 +1,16 @@
+[package]
+name = "sim-core"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+
+[features]
+ground-truth = []
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# No floating point in simulation state or anything that feeds it.
+float_arithmetic = "deny"
