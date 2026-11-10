@@ -262,3 +262,18 @@ Aim: give swimmers a niche so fins pay off. 5 seeds × 1,000 generations looked 
 Deep-water births rose 3–4×, but fins were still not selected (7/10 seeds, p 0.34). No gain on the
 gate, so the change is reverted. (There is no tides-off control at 0.2 with bodies yet, so the
 tides-off row is not a comparison.)
+
+### Experiment: bigger world (128×64, 4× the area) — no gain
+
+Bodies on, current rules, 5 seeds × 1,000 generations, founders scaled with area (1,024).
+
+| world | kinds per seed (1–5) | mean | ≥ 5 kinds |
+|---|---|---|---|
+| 64×32 (control, same rules and length) | 5 5 2 4 2 | 3.6 | 2/5 |
+| 128×64 | 3 2 4 4 3 | 3.2 | 0/5 |
+
+All survived; 1–3 founder lineages remain. Space alone does not split kinds. Across the
+experiments so far (size rules, refuges, tolerance cost, bodies, deep-water food, world size) the
+count stays at 2–4. A likely reason: competitive exclusion. The world has one plant resource,
+eaten the same way by everyone, plus prey; roughly as many kinds coexist as there are distinct
+ways to make a living.
