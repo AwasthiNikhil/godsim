@@ -157,3 +157,19 @@ Upkeep gains `0.004 · temp_tol` (tolerance 25 adds 0.1 per tick) **[Provisional
 - Still 0/5 reach 5 clusters at the provisional link 0.50; stricter links now give 4–9. The verdict
   depends on the cluster definition (open question for the author).
 - `repro_energy` is still pinned near its minimum (2–6 of 2–40).
+
+## Diversity gate with the peak-based "kinds" measure (author's choice, 2026-11-10)
+
+`batch --seeds 10 --generations 2000 --configs base,tides-off`. Kinds = combinations of distinct peaks in
+body size, diet and preferred temperature holding ≥ 2% of the population **[Provisional]**.
+
+| Config | Survived | ≥ 5 kinds | Kinds per seed (1–10) | Mean |
+|---|---|---|---|---|
+| base (moon) | 10/10 | 0/10 | 3 2 2 2 2 2 3 2 3 2 | 2.3 |
+| tides-off | 10/10 | 0/10 | 3 2 2 2 2 2 2 2 2 2 | 2.1 |
+
+- **S0-lite diversity: FAIL** (needs 8/10 seeds at ≥ 5 kinds).
+- The kinds are real and stable across seeds: small grazers (size ~0.8, ~75%), large grazers (size ~3) and,
+  in some seeds, large hunters (size ~3.5, diet ~0.55). Size and diet split; **preferred temperature never
+  shows more than one peak**, so climate is not yet creating regional types even with tolerance costed.
+- Moon vs no moon: 2.3 vs 2.1 kinds. Too small a difference to read anything into.
