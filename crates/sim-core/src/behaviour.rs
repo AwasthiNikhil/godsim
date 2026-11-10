@@ -92,10 +92,20 @@ pub fn decide(
     }
     if me.genome.diet < Fx::ratio(7, 10) {
         // Richest cell among here and the 8 neighbours; ties keep the first in fixed order.
+        // Food counts only if this creature can eat it (tough plants need a big mouth).
+        let food = |c: CellId, sat: &mut Sat| {
+            let i = c.0 as usize;
+            match env.tough.get(i) {
+                Some(&t) if a.tough_bite > Fx::ZERO => sat.add(env.plant[i], t),
+                _ => env.plant[i],
+            }
+        };
         let mut best = here;
+        let mut best_food = food(here, sat);
         for nb in grid.neighbours(here) {
-            if env.plant[nb.0 as usize] > env.plant[best.0 as usize] {
-                best = nb;
+            let f = food(nb, sat);
+            if f > best_food {
+                (best, best_food) = (nb, f);
             }
         }
         return Intent::Graze(best);

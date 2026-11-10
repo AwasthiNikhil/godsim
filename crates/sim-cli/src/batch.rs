@@ -112,6 +112,25 @@ fn body_kind_values(c: &Creature) -> Vec<f64> {
     v
 }
 
+/// Diagnostic only: the gate axes plus mouth grip (tough bite / (soft + tough bite)), 0 = soft-food
+/// mouth, up to 2/3 = full grinder.
+pub const GRIP_KIND_TRAITS: [(&str, f64, f64); 6] = [
+    ("size", 0.2, 5.0),
+    ("diet", 0.0, 1.0),
+    ("temp_opt", -10.0, 30.0),
+    ("water_share", 0.0, 1.0),
+    ("defence", 0.0, 0.6),
+    ("grip", 0.0, 0.7),
+];
+
+fn grip_kind_values(c: &Creature) -> Vec<f64> {
+    let f = |v: Fx| v.raw() as f64 / 65536.0;
+    let (b, t) = (f(c.abilities.bite), f(c.abilities.tough_bite));
+    let mut v = body_kind_values(c);
+    v.push(if b + t > 0.0 { t / (b + t) } else { 0.0 });
+    v
+}
+
 /// Cut points between the distinct peaks of one trait's histogram.
 pub fn cuts(values: &[f64], lo: f64, hi: f64) -> Vec<f64> {
     let w = (hi - lo) / BINS as f64;
@@ -433,6 +452,29 @@ fn run_one(
             (hi - lo) * 100.0 / full[k]
         );
     }
+    if bodies {
+        let (gcut, gk) = kinds_by(w.creatures(), &GRIP_KIND_TRAITS, grip_kind_values);
+        let _ = writeln!(
+            r,
+            "\nkinds incl. mouth grip (diagnostic, not the gate): {}  — grip peaks {}",
+            gk.len(),
+            gcut[5].len() + 1
+        );
+    }
+    let env = w.env();
+    let mean = |v: &[Fx]| v.iter().map(|&x| f(x)).sum::<f64>() / v.len().max(1) as f64;
+    let eaters = w
+        .creatures()
+        .iter()
+        .filter(|c| c.abilities.tough_bite > Fx::ZERO)
+        .count();
+    let _ = writeln!(
+        r,
+        "\nfood per cell (cap 12): soft {:.2}  tough {:.2}  — tough-plant eaters {:.0}% of population",
+        mean(&env.plant),
+        mean(&env.tough),
+        eaters as f64 * 100.0 / w.creatures().len().max(1) as f64
+    );
     let _ = writeln!(r, "\nhabitat attribution (births over the whole run)");
     for (h, n) in &by_hab {
         let _ = writeln!(r, "{:>14} {n:>10}", format!("{h:?}"));

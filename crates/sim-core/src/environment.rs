@@ -27,6 +27,15 @@ impl Habitat {
             Habitat::Highland => Fx::ratio(2, 5),
         }
     }
+
+    /// Tough-plant growth multiplier: dry land only. [Provisional], S0 tuning.
+    fn tough_fertility(self) -> Fx {
+        match self {
+            Habitat::Highland => Fx::ONE,
+            Habitat::Lowland => Fx::ratio(3, 5),
+            _ => Fx::ZERO,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,7 +44,10 @@ pub struct Environment {
     pub light: Vec<Fx>,
     pub temperature: Vec<Fx>,
     pub habitat: Vec<Habitat>,
+    /// Soft plants: any mouth (or none) can eat them.
     pub plant: Vec<Fx>,
+    /// Tough plants (bodies on only; empty otherwise): slow-growing, dry land, need a big mouth.
+    pub tough: Vec<Fx>,
     pub nutrients: Vec<Fx>,
     /// Current tide offset added to sea level, from the moon.
     pub tide: Fx,
@@ -54,6 +66,7 @@ impl Environment {
             temperature: vec![Fx::ZERO; n],
             habitat: vec![Habitat::Lowland; n],
             plant: vec![Fx::ZERO; n],
+            tough: Vec::new(),
             nutrients: vec![Fx::ZERO; n],
             tide: Fx::ZERO,
             temp_offset: Fx::ZERO,
@@ -133,6 +146,12 @@ impl Environment {
             let g = sat.add(base, from_nutrients);
             let g = sat.div(g, Fx::from_int(p.tick_scale as i32));
             self.plant[i] = sat.add(self.plant[i], g).min(p.plant_cap);
+        }
+        // Tough plants grow at half the soft rate from light alone, and do not use nutrients.
+        for i in 0..self.tough.len() {
+            let g = sat.mul(self.light[i], self.habitat[i].tough_fertility());
+            let g = sat.div(g, Fx::from_int(16 * p.tick_scale as i32));
+            self.tough[i] = sat.add(self.tough[i], g).min(p.plant_cap);
         }
     }
 }

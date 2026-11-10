@@ -277,3 +277,32 @@ experiments so far (size rules, refuges, tolerance cost, bodies, deep-water food
 count stays at 2–4. A likely reason: competitive exclusion. The world has one plant resource,
 eaten the same way by everyone, plus prey; roughly as many kinds coexist as there are distinct
 ways to make a living.
+
+### Two plant types: soft and tough (kept)
+
+Bodies on only (S0-lite hash unchanged). Soft plants are the old ones. Tough plants grow at half
+the soft rate from light alone, on dry land only (highland 1.0, lowland 0.6), and need a big mouth:
+none below 0.8 total mouth length, full bite at 1.8.
+
+**First version, no trade-off:** 99–100% of every population evolved a big mouth and grazed tough
+plants bare. Gate 3/10, mean 4.0 (control 3/10, mean 3.7). A free upgrade adds food, not kinds.
+
+**With a trade-off** (a grinding mouth halves the soft-plant bite at full grip; total bite stays
+full), 10 seeds × 2,000 generations, moon on:
+
+| seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| tough-plant eaters % | 73 | 80 | 83 | 63 | 55 | 73 | 77 | 53 | 64 | 56 |
+| kinds, gate measure | 2 | 4 | 2 | 7 | 2 | 3 | 6 | 7 | 2 | 3 |
+| kinds + mouth grip axis (diagnostic) | 4 | 6 | 5 | 12 | 5 | 6 | 8 | 8 | 4 | 5 |
+
+Survival 10/10. **Gate: 3/10** (mean 3.8). Populations now split into grinders and soft-food
+grazers in every run (53–83% grinders), and mouth grip shows 2–5 peaks per run. With mouth grip
+counted as a body axis, **8/10** reach 5 kinds, which would meet the threshold.
+
+Caveat: grip is built from mouth lengths, and mouth count is discrete (0, 1, 2 …), so some grip
+peaks may be "1 mouth vs 2 mouths" rather than distinct ways of life; 12 kinds in seed 4 looks
+like over-splitting. Whether the gate counts grip is the author's decision.
+
+`body-selection` with the trade-off: PASS, 7 of 12 features (mouths 10/10, limbs 10/10,
+segments 9/10, size 9/10, both speeds 10/10).

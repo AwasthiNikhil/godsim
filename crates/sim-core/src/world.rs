@@ -44,6 +44,9 @@ impl World {
         let grid = Grid::new(config.width, config.height, &mut sat);
         let mut env = Environment::new(seed, &config, &grid, &mut sat);
         env.update(0, &config, &params, &grid, &mut sat);
+        if params.bodies != BodyMode::Off {
+            env.tough = vec![Fx::from_int(4); env.plant.len()];
+        }
         let mut creatures: Vec<Creature> = (0..config.founders)
             .map(|f| {
                 let id = EntityId::founder(f);
@@ -238,6 +241,13 @@ impl World {
             let take = c.abilities.bite.min(self.env.plant[cell]);
             self.env.plant[cell] = sat.sub(self.env.plant[cell], take);
             c.energy = sat.add(c.energy, take);
+            // Then tough plants, up to the tough bite in total, if the mouth can manage them.
+            if let Some(tough) = self.env.tough.get_mut(cell) {
+                let room = sat.sub(c.abilities.tough_bite, take).max(Fx::ZERO);
+                let t = room.min(*tough);
+                *tough = sat.sub(*tough, t);
+                c.energy = sat.add(c.energy, t);
+            }
         }
 
         // 7. Metabolism and ageing.

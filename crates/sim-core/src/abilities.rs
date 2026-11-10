@@ -21,8 +21,11 @@ pub struct Abilities {
     pub sense_range: Fx,
     /// Distance at which an attack can land.
     pub reach: Fx,
-    /// Plant energy eaten per tick at most.
+    /// Soft-plant energy eaten per tick at most.
     pub bite: Fx,
+    /// Total plant energy per tick at most when tough plants are eaten too (zero without a big
+    /// enough mouth). Tough plants fill what the soft bite left of this.
+    pub tough_bite: Fx,
     /// Energy cost per tick of having this body.
     pub upkeep: Fx,
 }
@@ -80,6 +83,7 @@ impl Abilities {
             sense_range: g.sense_range,
             reach,
             bite,
+            tough_bite: Fx::ZERO,
             upkeep,
         }
     }
@@ -106,6 +110,8 @@ impl Abilities {
     /// - sense range = 1 + 1.5 · Σ sensor length, in [1, 6]
     /// - largest prey = 1.5 · Σ mouth length, never above 0.7 · size; no mouth, no hunting
     /// - bite as before, but a body without a mouth grazes at 30%
+    /// - tough plants: none below 0.8 total mouth length, rising to the full bite at 1.8;
+    ///   the same grip halves the soft-plant bite at most
     /// - upkeep as before, with speed = the faster of land and water speed
     pub fn from_body(t: &BodyTree, g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
         let mut area = Fx::ZERO;
@@ -169,6 +175,14 @@ impl Abilities {
         if mouths == Fx::ZERO {
             a.bite = sat.mul(a.bite, Fx::ratio(3, 10));
         }
+        // Tough plants: none below 0.8 total mouth length, full bite from 1.8. Trade-off: a
+        // grinding mouth is worse at soft food (soft bite × (1 − grip/2)), so grinders and
+        // soft-food grazers can both win somewhere.
+        let grip = sat.sub(mouths, Fx::ratio(4, 5)).clamp(Fx::ZERO, Fx::ONE);
+        a.tough_bite = sat.mul(a.bite, grip);
+        let half = sat.div(grip, Fx::from_int(2));
+        let soft = sat.sub(Fx::ONE, half);
+        a.bite = sat.mul(a.bite, soft);
         a.land_speed = sat.div(land, scale);
         a.water_speed = sat.div(water, scale);
         a.defence = shell_share.min(Fx::ratio(6, 10));
