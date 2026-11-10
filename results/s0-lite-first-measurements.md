@@ -218,3 +218,26 @@ propulsion (or water-only), so limbs and fins have to earn their place.
 lineage took over, so the 3 lineages are clades that split 133 generations in. The author's own
 (non-blind, not evidence) grouping matched the key almost completely; the three clades look
 visibly different (four-lobed, sensor-stalked long body, three-petalled).
+
+### Segments swim but do not walk; diversity gate with bodies
+
+With segments counting toward both speeds, a segmented worm beat every specialist. Segments now help
+only in water. Re-run of `body-selection` (10 seeds × 500 generations): **PASS, 7 of 12 features**.
+Limbs are now selected (1.35 vs 0.18 under drift, 10/10 seeds); sensors too (10/10). Segments 8/10
+(p 0.11), fins still not selected (5/9). Most births are on land and tidal flats.
+
+Before the change (segments in both media), bodies gate, with the moon: 10/10 survived, kinds
+2 2 2 2 2 2 2 1 2 4, 0/10 reach 5. (The tides-off half was stopped; it used the old rule.)
+
+After the change, `batch --configs bodies --seeds 10 --generations 2000`, with the moon:
+
+| seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| kinds (gate measure: size, diet, temp_opt) | 3 | 2 | 2 | 2 | 2 | 2 | 3 | 2 | 2 | 2 |
+| kinds incl. body axes (diagnostic: + water share, armour) | 3 | 4 | 2 | 4 | 2 | 5 | 4 | 6 | 2 | 5 |
+
+Survival 10/10. **Gate: 0/10** (mean 2.2 kinds, unchanged from the stand-in traits). Counting body
+axes too, 3/10 reach 5 kinds (mean 3.7). Armour shows 3 peaks in half the runs, and walker/swimmer
+balance has 2 peaks in most, so bodies add real kinds that the gate's trait list cannot see.
+Whether the gate should count body axes is the author's decision; the gate measure is unchanged.
+Hunting persists with bodies (seed 1: a 37% kind at diet 0.35, size 2.6).

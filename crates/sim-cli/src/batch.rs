@@ -87,9 +87,28 @@ pub const KIND_TRAITS: [(&str, f64, f64); 3] = [
 ];
 const BINS: usize = 24;
 
-fn kind_values(c: &Creature) -> [f64; 3] {
+fn kind_values(c: &Creature) -> Vec<f64> {
     let f = |v: Fx| v.raw() as f64 / 65536.0;
-    [f(c.abilities.size), f(c.genome.diet), f(c.genome.temp_opt)]
+    vec![f(c.abilities.size), f(c.genome.diet), f(c.genome.temp_opt)]
+}
+
+/// Diagnostic only (not the gate): the gate traits plus two body axes, so body-made kinds show.
+/// water share = water speed / (land + water speed): 0 = walker, 1 = swimmer.
+pub const BODY_KIND_TRAITS: [(&str, f64, f64); 5] = [
+    ("size", 0.2, 5.0),
+    ("diet", 0.0, 1.0),
+    ("temp_opt", -10.0, 30.0),
+    ("water_share", 0.0, 1.0),
+    ("defence", 0.0, 0.6),
+];
+
+fn body_kind_values(c: &Creature) -> Vec<f64> {
+    let f = |v: Fx| v.raw() as f64 / 65536.0;
+    let a = &c.abilities;
+    let (l, w) = (f(a.land_speed), f(a.water_speed));
+    let mut v = kind_values(c);
+    v.extend([w / (l + w), f(a.defence)]);
+    v
 }
 
 /// Cut points between the distinct peaks of one trait's histogram.
@@ -135,22 +154,34 @@ pub fn cuts(values: &[f64], lo: f64, hi: f64) -> Vec<f64> {
 
 pub struct Kind {
     pub share_pct: f64,
-    pub key: [usize; 3],
-    pub mean: [f64; 3],
+    pub key: Vec<usize>,
+    pub mean: Vec<f64>,
 }
 
 /// Returns the cut points per trait and the kinds that hold at least MIN_SHARE_PCT of the population.
 pub fn kinds(cs: &[Creature]) -> (Vec<Vec<f64>>, Vec<Kind>) {
-    let vals: Vec<[f64; 3]> = cs.iter().map(kind_values).collect();
-    let cut: Vec<Vec<f64>> = KIND_TRAITS
+    kinds_by(cs, &KIND_TRAITS, kind_values)
+}
+
+fn kinds_by(
+    cs: &[Creature],
+    traits: &[(&str, f64, f64)],
+    value: fn(&Creature) -> Vec<f64>,
+) -> (Vec<Vec<f64>>, Vec<Kind>) {
+    let vals: Vec<Vec<f64>> = cs.iter().map(value).collect();
+    let cut: Vec<Vec<f64>> = traits
         .iter()
         .enumerate()
         .map(|(k, &(_, lo, hi))| cuts(&vals.iter().map(|v| v[k]).collect::<Vec<_>>(), lo, hi))
         .collect();
-    let mut groups: BTreeMap<[usize; 3], (usize, [f64; 3])> = BTreeMap::new();
+    let mut groups: BTreeMap<Vec<usize>, (usize, Vec<f64>)> = BTreeMap::new();
     for v in &vals {
-        let key = [0, 1, 2].map(|k| cut[k].iter().filter(|&&c| v[k] >= c).count());
-        let e = groups.entry(key).or_default();
+        let key: Vec<usize> = (0..traits.len())
+            .map(|k| cut[k].iter().filter(|&&c| v[k] >= c).count())
+            .collect();
+        let e = groups
+            .entry(key)
+            .or_insert_with(|| (0, vec![0.0; traits.len()]));
         e.0 += 1;
         for (s, x) in e.1.iter_mut().zip(v) {
             *s += x;
@@ -163,7 +194,7 @@ pub fn kinds(cs: &[Creature]) -> (Vec<Vec<f64>>, Vec<Kind>) {
         .map(|(key, (c, sum))| Kind {
             share_pct: c as f64 * 100.0 / n,
             key,
-            mean: sum.map(|x| x / c as f64),
+            mean: sum.into_iter().map(|x| x / c as f64).collect(),
         })
         .collect();
     out.sort_by(|a, b| b.share_pct.total_cmp(&a.share_pct));
@@ -293,12 +324,39 @@ fn run_one(
         "share", "size", "diet", "temp_opt"
     );
     for k in &kd {
-        let [a, b, c] = k.mean;
+        let (a, b, c) = (k.mean[0], k.mean[1], k.mean[2]);
         let _ = writeln!(
             r,
             "{:>6.1}% {a:>6.2} {b:>6.2} {c:>8.1}   peak {:?}",
             k.share_pct, k.key
         );
+    }
+    if w.creatures().iter().any(|c| c.genome.body.is_some()) {
+        let (bcut, bk) = kinds_by(w.creatures(), &BODY_KIND_TRAITS, body_kind_values);
+        let _ = writeln!(
+            r,
+            "\nkinds incl. body axes (diagnostic, not the gate): {}  — peaks per trait: {}",
+            bk.len(),
+            BODY_KIND_TRAITS
+                .iter()
+                .zip(&bcut)
+                .map(|((n, _, _), c)| format!("{n} {}", c.len() + 1))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        let _ = writeln!(
+            r,
+            "{:>7} {:>6} {:>6} {:>8} {:>6} {:>7}",
+            "share", "size", "diet", "temp_opt", "water", "defence"
+        );
+        for k in &bk {
+            let m = &k.mean;
+            let _ = writeln!(
+                r,
+                "{:>6.1}% {:>6.2} {:>6.2} {:>8.1} {:>6.2} {:>7.2}",
+                k.share_pct, m[0], m[1], m[2], m[3], m[4]
+            );
+        }
     }
     let _ = writeln!(
         r,

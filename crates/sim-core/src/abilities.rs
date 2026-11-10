@@ -100,7 +100,7 @@ impl Abilities {
     /// diet, physiology and behaviour still come from the genome. Every constant is [Provisional].
     ///
     /// - size = 0.35 · Σ length²·width over all parts (body area), in [0.2, 5]
-    /// - land speed from limb length, water speed from fin length (segments help a little in both),
+    /// - land speed from limb length, water speed from fin length (segments help a little in water only),
     ///   each = 0.1 + 0.5 · push / √size, slowed by the shell share, in [0.1, 2]
     /// - defence = shell share of area, at most 0.6
     /// - sense range = 1 + 1.5 · Σ sensor length, in [1, 6]
@@ -143,14 +143,15 @@ impl Abilities {
         let drag = sat.div(shell_share, Fx::from_int(2));
         let slow = sat.sub(Fx::ONE, drag);
         let speed_of = |push: Fx, sat: &mut Sat| {
-            let p = sat.add(push, wriggle);
-            let p = sat.div(p, root);
+            let p = sat.div(push, root);
             let p = sat.mul(p, Fx::ratio(1, 2));
             let v = sat.add(Fx::ratio(1, 10), p);
             sat.mul(v, slow).clamp(Fx::ratio(1, 10), Fx::from_int(2))
         };
+        // Undulating segments swim but do not walk (S0 tuning: in both, worms beat every specialist).
         let land = speed_of(limbs, sat);
-        let water = speed_of(fins, sat);
+        let swim = sat.add(fins, wriggle);
+        let water = speed_of(swim, sat);
         let sense = sat.mul(sensors, Fx::ratio(3, 2));
         let sense = sat.add(Fx::ONE, sense).clamp(Fx::ONE, Fx::from_int(6));
 
