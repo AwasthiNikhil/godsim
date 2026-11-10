@@ -75,6 +75,101 @@ pub fn clusters(cs: &[Creature], link: Fx) -> Vec<Cluster> {
     out
 }
 
+/// [Provisional] "kinds" measure for the ≥ 5 trait clusters gate (author chose peaks over linkage,
+/// 2026-11-10): find the distinct peaks of three traits (body size, diet, preferred temperature),
+/// split each trait at the dips between its peaks, and count the trait combinations holding at least
+/// `MIN_SHARE_PCT` percent of the population. A peak only counts if the dip on each side falls below
+/// half the smaller neighbouring peak.
+pub const KIND_TRAITS: [(&str, f64, f64); 3] = [
+    ("size", 0.2, 5.0),
+    ("diet", 0.0, 1.0),
+    ("temp_opt", -10.0, 30.0),
+];
+const BINS: usize = 24;
+
+fn kind_values(c: &Creature) -> [f64; 3] {
+    let f = |v: Fx| v.raw() as f64 / 65536.0;
+    [f(c.genome.size), f(c.genome.diet), f(c.genome.temp_opt)]
+}
+
+/// Cut points between the distinct peaks of one trait's histogram.
+pub fn cuts(values: &[f64], lo: f64, hi: f64) -> Vec<f64> {
+    let w = (hi - lo) / BINS as f64;
+    let mut h = [0.0f64; BINS];
+    for &v in values {
+        h[(((v - lo) / w) as usize).min(BINS - 1)] += 1.0;
+    }
+    // Smooth [1 2 1] so single-bin noise does not count as a peak.
+    let s: Vec<f64> = (0..BINS)
+        .map(|i| {
+            let l = if i > 0 { h[i - 1] } else { 0.0 };
+            let r = if i + 1 < BINS { h[i + 1] } else { 0.0 };
+            l + 2.0 * h[i] + r
+        })
+        .collect();
+    let peaks: Vec<usize> = (0..BINS)
+        .filter(|&i| {
+            s[i] > 0.0 && (i == 0 || s[i] > s[i - 1]) && (i + 1 == BINS || s[i] >= s[i + 1])
+        })
+        .collect();
+    // Walk peaks left to right; keep a new peak only if a real dip separates it from the last kept one.
+    let mut kept: Vec<usize> = Vec::new();
+    let mut out = Vec::new();
+    for p in peaks {
+        let Some(&q) = kept.last() else {
+            kept.push(p);
+            continue;
+        };
+        let (dip, at) = (q..=p)
+            .map(|i| (s[i], i))
+            .fold((f64::MAX, q), |a, b| if b.0 < a.0 { b } else { a });
+        if dip < 0.5 * s[q].min(s[p]) {
+            out.push(lo + (at as f64 + 0.5) * w);
+            kept.push(p);
+        } else if s[p] > s[q] {
+            *kept.last_mut().unwrap() = p; // same hump, higher top
+        }
+    }
+    out
+}
+
+pub struct Kind {
+    pub share_pct: f64,
+    pub key: [usize; 3],
+    pub mean: [f64; 3],
+}
+
+/// Returns the cut points per trait and the kinds that hold at least MIN_SHARE_PCT of the population.
+pub fn kinds(cs: &[Creature]) -> (Vec<Vec<f64>>, Vec<Kind>) {
+    let vals: Vec<[f64; 3]> = cs.iter().map(kind_values).collect();
+    let cut: Vec<Vec<f64>> = KIND_TRAITS
+        .iter()
+        .enumerate()
+        .map(|(k, &(_, lo, hi))| cuts(&vals.iter().map(|v| v[k]).collect::<Vec<_>>(), lo, hi))
+        .collect();
+    let mut groups: BTreeMap<[usize; 3], (usize, [f64; 3])> = BTreeMap::new();
+    for v in &vals {
+        let key = [0, 1, 2].map(|k| cut[k].iter().filter(|&&c| v[k] >= c).count());
+        let e = groups.entry(key).or_default();
+        e.0 += 1;
+        for (s, x) in e.1.iter_mut().zip(v) {
+            *s += x;
+        }
+    }
+    let n = cs.len().max(1) as f64;
+    let mut out: Vec<Kind> = groups
+        .into_iter()
+        .filter(|(_, (c, _))| *c as f64 * 100.0 / n >= MIN_SHARE_PCT as f64)
+        .map(|(key, (c, sum))| Kind {
+            share_pct: c as f64 * 100.0 / n,
+            key,
+            mean: sum.map(|x| x / c as f64),
+        })
+        .collect();
+    out.sort_by(|a, b| b.share_pct.total_cmp(&a.share_pct));
+    (cut, out)
+}
+
 struct RunResult {
     config: String,
     seed: u64,
@@ -82,6 +177,7 @@ struct RunResult {
     ticks: u64,
     generations: u64,
     population: usize,
+    kinds: usize,
     clusters: usize,
     tidal_share_pct: f64,
     report: String,
@@ -114,6 +210,7 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     }
     let alive = !w.creatures().is_empty();
     let survived = alive && gens >= generations;
+    let (cut, kd) = kinds(w.creatures());
     let cl = clusters(w.creatures(), LINK);
     // Diagnostic: the same population counted at stricter links, plus the spread of each trait.
     let strict: Vec<(f64, usize)> = [Fx::ratio(35, 100), Fx::ratio(25, 100), Fx::ratio(15, 100)]
@@ -161,7 +258,31 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     );
     let _ = writeln!(
         r,
-        "\ntrait clusters: {} (link ≤ {:.2}, ≥ {MIN_SHARE_PCT}% of sample)",
+        "\nkinds (gate measure): {}  — peaks per trait: {}",
+        kd.len(),
+        KIND_TRAITS
+            .iter()
+            .zip(&cut)
+            .map(|((n, _, _), c)| format!("{n} {}", c.len() + 1))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let _ = writeln!(
+        r,
+        "{:>7} {:>6} {:>6} {:>8}",
+        "share", "size", "diet", "temp_opt"
+    );
+    for k in &kd {
+        let [a, b, c] = k.mean;
+        let _ = writeln!(
+            r,
+            "{:>6.1}% {a:>6.2} {b:>6.2} {c:>8.1}   peak {:?}",
+            k.share_pct, k.key
+        );
+    }
+    let _ = writeln!(
+        r,
+        "\nlinkage clusters (old diagnostic): {} (link ≤ {:.2}, ≥ {MIN_SHARE_PCT}% of sample)",
         cl.len(),
         LINK.raw() as f64 / 65536.0
     );
@@ -178,13 +299,32 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     for (l, n) in &strict {
         let _ = write!(r, "  {l:.2} → {n}");
     }
-    let _ = writeln!(r, "\n\ntrait spread (10th–90th percentile, and as a share of the trait's full range)");
+    let _ = writeln!(
+        r,
+        "\n\ntrait spread (10th–90th percentile, and as a share of the trait's full range)"
+    );
     let f = |v: Fx| v.raw() as f64 / 65536.0;
     let g = |c: &Creature| {
         let t = &c.genome;
-        [t.size, t.speed, t.diet, t.sense_range, t.repro_energy, t.temp_opt, t.temp_tol]
+        [
+            t.size,
+            t.speed,
+            t.diet,
+            t.sense_range,
+            t.repro_energy,
+            t.temp_opt,
+            t.temp_tol,
+        ]
     };
-    let names = ["size", "speed", "diet", "sense", "repro_energy", "temp_opt", "temp_tol"];
+    let names = [
+        "size",
+        "speed",
+        "diet",
+        "sense",
+        "repro_energy",
+        "temp_opt",
+        "temp_tol",
+    ];
     let full = [4.8, 1.9, 1.0, 5.0, 38.0, 40.0, 23.0];
     for k in 0..names.len() {
         let mut v: Vec<f64> = w.creatures().iter().map(|c| f(g(c)[k])).collect();
@@ -220,6 +360,7 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
         ticks: w.tick(),
         generations: gens,
         population: w.creatures().len(),
+        kinds: kd.len(),
         clusters: cl.len(),
         tidal_share_pct,
         report: r,
@@ -250,8 +391,8 @@ pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations
                     };
                     let r = run_one(c, cfg.clone(), *seed, generations);
                     eprintln!(
-                        "  {c} seed {seed}: survived {} gens {} clusters {}",
-                        r.survived, r.generations, r.clusters
+                        "  {c} seed {seed}: survived {} gens {} kinds {}",
+                        r.survived, r.generations, r.kinds
                     );
                     results.lock().unwrap().push(r);
                 }
@@ -263,18 +404,19 @@ pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations
 
     std::fs::create_dir_all(dir).expect("create output folder");
     let mut tsv = String::from(
-        "config\tseed\tsurvived\tticks\tgenerations\tpopulation\tclusters\ttidal_births_pct\n",
+        "config\tseed\tsurvived\tticks\tgenerations\tpopulation\tkinds\tlinkage_clusters\ttidal_births_pct\n",
     );
     for r in &results {
         let _ = writeln!(
             tsv,
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.1}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.1}",
             r.config,
             r.seed,
             r.survived,
             r.ticks,
             r.generations,
             r.population,
+            r.kinds,
             r.clusters,
             r.tidal_share_pct
         );
@@ -285,12 +427,12 @@ pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations
 
     println!(
         "\n{:>10} {:>9} {:>14} {:>16}",
-        "config", "survived", "≥5 clusters", "tidal births %"
+        "config", "survived", "≥5 kinds", "tidal births %"
     );
     for c in configs {
         let rs: Vec<_> = results.iter().filter(|r| r.config == *c).collect();
         let surv = rs.iter().filter(|r| r.survived).count();
-        let pass = rs.iter().filter(|r| r.survived && r.clusters >= 5).count();
+        let pass = rs.iter().filter(|r| r.survived && r.kinds >= 5).count();
         let tidal = rs.iter().map(|r| r.tidal_share_pct).sum::<f64>() / rs.len().max(1) as f64;
         println!(
             "{c:>10} {:>9} {:>14} {tidal:>16.1}",
@@ -299,4 +441,29 @@ pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations
         );
     }
     println!("wrote {dir}/summary.tsv and one report per run");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cuts;
+
+    #[test]
+    fn peaks_are_found_only_where_a_real_dip_exists() {
+        // One hump: no cut.
+        let one: Vec<f64> = (0..200).map(|i| 0.4 + (i % 20) as f64 * 0.01).collect();
+        assert!(cuts(&one, 0.0, 1.0).is_empty());
+        // Two humps with an empty gap: one cut, inside the gap.
+        let two: Vec<f64> = (0..200)
+            .map(|i| {
+                if i % 2 == 0 {
+                    0.1 + (i % 10) as f64 * 0.005
+                } else {
+                    0.8 + (i % 10) as f64 * 0.005
+                }
+            })
+            .collect();
+        let c = cuts(&two, 0.0, 1.0);
+        assert_eq!(c.len(), 1);
+        assert!(c[0] > 0.2 && c[0] < 0.8, "cut {c:?}");
+    }
 }

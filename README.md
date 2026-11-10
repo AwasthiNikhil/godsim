@@ -20,7 +20,7 @@ fetches it on first use.
 From the repo folder:
 
     cargo build --release          # builds target/release/sim-cli
-    cargo test --release           # 20 tests: arithmetic, RNG, grid, determinism
+    cargo test --release --all-features   # arithmetic, RNG, grid, determinism, body growth
     cargo clippy --all-targets -- -D warnings
 
 Always use `--release`: the debug build is many times slower.
@@ -38,6 +38,7 @@ Every command is `./target/release/sim-cli <command> [flags]`. Flags are listed 
 | `timing` | Throughput at four world sizes | ~1 min | table in the terminal |
 | `export` | Records a world for the viewer | ~5 s | `runs/export/world.jsonl` |
 | `chase-clips` | Records kills at tick scales 1, 2, 4, 8, shuffled | ~10 s | `runs/chase-clips/` |
+| `silhouettes` | 30 body silhouettes from 3 lineages, shuffled, for the E4 grouping test | ~1 s | `runs/silhouettes/sheet.html` (open in a browser) and `answer-key.txt` |
 | `batch --seeds 10 --generations 2000 --configs base,tides-off` | Survival and diversity check, tides on/off | minutes | `runs/batch/summary.tsv` plus one report per run |
 
 Add `--seed N` to most commands to get a different world. The same seed always gives the same world.

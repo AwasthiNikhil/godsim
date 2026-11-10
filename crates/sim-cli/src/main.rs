@@ -4,12 +4,14 @@
 //!   sim-cli timing      [--ticks N] [--warmup N] [--repeats R] [--seed S]
 //!   sim-cli export      [--ticks N] [--every K] [--seed S] [--width W --height H] [--out FILE]
 //!   sim-cli batch       [--seeds 10] [--generations 2000] [--configs base,tides-off] [--width W --height H] [--out DIR]
+//!   sim-cli silhouettes [--lineages 3] [--per 10] [--steps 4] [--seed S] [--out DIR]
 //!   sim-cli chase-clips [--scales 1,2,4,8] [--clips N] [--warmup N] [--window N] [--seed S] [--out DIR]
 //!
 //! ponytail: hand-rolled flag parsing; add a parser crate when there are more than a handful of flags.
 
 mod batch;
 mod export;
+mod svg;
 
 use sim_core::fixed::Fx;
 use sim_core::{InitialWorldConfig, SimParams, World};
@@ -179,6 +181,13 @@ fn main() {
                 text(&args, "--out", "runs/batch"),
             )
         }
+        Some("silhouettes") => svg::silhouettes(
+            flag(&args, "--seed", 1),
+            flag(&args, "--lineages", 3) as u32,
+            flag(&args, "--per", 10) as usize,
+            flag(&args, "--steps", 4) as u32,
+            text(&args, "--out", "runs/silhouettes"),
+        ),
         Some("chase-clips") => {
             let scales: Vec<u32> = text(&args, "--scales", "1,2,4,8")
                 .split(',')
@@ -197,7 +206,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "usage: sim-cli determinism|timing|export|batch|chase-clips [flags]  (see source header)"
+                "usage: sim-cli determinism|timing|export|batch|silhouettes|chase-clips [flags]  (see source header)"
             );
             std::process::exit(2);
         }

@@ -2,6 +2,8 @@
 
 pub mod abilities;
 pub mod behaviour;
+#[cfg(feature = "body-graph")]
+pub mod body;
 pub mod config;
 pub mod creature;
 pub mod environment;
