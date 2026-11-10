@@ -1,9 +1,12 @@
 //! E4 silhouettes (design entry #35): grown bodies as single-colour SVGs, and the blind grouping set.
 //! The renderer is throwaway; the grammar (sim-core `body`) is kept.
 
-use sim_core::body::{BodyGraph, BodyTree, Function, GrowthLimits, grow};
+use sim_core::body::{BodyTree, Function, GrowthLimits, grow};
 use sim_core::fixed::{Fx, Sat};
+use sim_core::record::Event;
 use sim_core::rng::{EntityId, Purpose, below, draw};
+use sim_core::{BodyMode, InitialWorldConfig, SimParams, World};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
 
 fn f(v: Fx) -> f64 {
@@ -78,56 +81,89 @@ pub fn render(tree: &BodyTree) -> String {
     )
 }
 
-/// `silhouettes`: 3 lineages × `per` creatures, shuffled file names, answer key kept separately.
+/// `silhouettes`: `lineages` × `per` creatures that evolved in one world (bodies on), shuffled
+/// file names, answer key kept separately.
 ///
-/// ponytail: interim lineages come from mutation-only family trees (no ecology), each member
-/// `steps` mutations from its parent. The E4 run proper uses lineages from the simulation once
-/// body → abilities is plugged in.
-pub fn silhouettes(seed: u64, lineages: u32, per: usize, steps: u32, dir: &str) {
+/// A lineage is a clade: everyone alive descended from one ancestor. Clades are taken at the
+/// shallowest split (fewest generations from the founders) where `lineages` clades each have at
+/// least `per` living members, so the lineages are as old as the world allows. Members are spread
+/// evenly through each clade.
+pub fn silhouettes(
+    seed: u64,
+    cfg: InitialWorldConfig,
+    generations: u64,
+    lineages: usize,
+    per: usize,
+    dir: &str,
+) {
+    let mut w = World::new(
+        seed,
+        cfg,
+        SimParams {
+            bodies: BodyMode::On,
+            ..SimParams::default()
+        },
+    );
+    let mut parent: HashMap<EntityId, EntityId> = HashMap::new();
+    while !w.creatures().is_empty() && w.stats().generations(w.tick()).unwrap_or(0) < generations {
+        w.advance(500);
+        for e in w.drain_events() {
+            if let Event::Birth { id, parent: p, .. } = e {
+                parent.insert(id, p);
+            }
+        }
+    }
+    // Ancestor chain of every living creature, indexed by depth (0 = founder).
+    let chains: Vec<Vec<EntityId>> = w
+        .creatures()
+        .iter()
+        .map(|c| {
+            let mut chain = vec![c.id];
+            while let Some(&p) = parent.get(chain.last().unwrap()) {
+                chain.push(p);
+            }
+            chain.reverse();
+            chain
+        })
+        .collect();
+    let max_depth = chains.iter().map(Vec::len).min().unwrap_or(0);
+    let clades = (0..max_depth).find_map(|d| {
+        let mut by: BTreeMap<EntityId, Vec<usize>> = BTreeMap::new();
+        for (i, ch) in chains.iter().enumerate() {
+            by.entry(ch[d]).or_default().push(i);
+        }
+        let mut big: Vec<Vec<usize>> = by.into_values().filter(|v| v.len() >= per).collect();
+        big.sort_by_key(|v| std::cmp::Reverse(v.len()));
+        (big.len() >= lineages).then_some((d, big))
+    });
+    let Some((depth, clades)) = clades else {
+        println!("no split with {lineages} clades of {per}+ living members; try another --seed");
+        return;
+    };
     let lim = GrowthLimits::default();
     let mut sat = Sat::default();
-    std::fs::create_dir_all(dir).expect("create output folder");
     let mut all: Vec<(u32, BodyTree)> = Vec::new();
-    let mut tick = 0;
-    let mut next_founder = 0;
-    for lineage in 0..lineages {
-        // Pick founders that grow into a body of at least 6 parts, so there is a shape to judge.
-        let (fid, founder) = loop {
-            let id = EntityId::founder(next_founder);
-            next_founder += 1;
-            let g = BodyGraph::founder(seed, id, &mut sat);
-            if grow(&g, &lim, &mut sat).is_some_and(|t| t.parts.len() >= 6) {
-                break (id, g);
-            }
-        };
-        // Family tree: each new member descends from a random earlier member.
-        let mut members: Vec<(EntityId, BodyGraph)> = vec![(fid, founder)];
-        while members.len() < per * 3 {
-            let pick = below(
-                draw(seed, fid, members.len() as u64, Purpose::Birth, 0),
-                members.len() as u64,
-            ) as usize;
-            let (pid, mut g) = members[pick].clone();
-            let cid = EntityId::child(pid, members.len() as u32);
-            for _ in 0..steps {
-                tick += 1;
-                g = g.mutated(seed, cid, tick, &lim, &mut sat);
-            }
-            members.push((cid, g));
+    for (l, members) in clades.iter().take(lineages).enumerate() {
+        let step = members.len() / per;
+        for &i in members.iter().step_by(step).take(per) {
+            let body = w.creatures()[i].genome.body.as_ref().expect("bodies on");
+            all.push((
+                l as u32,
+                grow(body, &lim, &mut sat).expect("living bodies grow"),
+            ));
         }
-        // Show the most recent `per` members that still grow a body.
-        let shown: Vec<BodyTree> = members
-            .iter()
-            .rev()
-            .filter_map(|(_, g)| grow(g, &lim, &mut sat))
-            // Stand-in for selection while there is no ecology: bodies reduced to a bare core
-            // would die in the simulation, so they are not shown.
-            .filter(|t| t.parts.len() >= 4)
-            .take(per)
-            .collect();
-        all.extend(shown.into_iter().map(|t| (lineage, t)));
     }
-    // Shuffle, name files 01.svg …, and keep the lineage of each in a separate key.
+    println!(
+        "{} generations, population {}; lineages split {depth} generations after the founders",
+        w.stats().generations(w.tick()).unwrap_or(0),
+        w.creatures().len()
+    );
+    write_set(seed, &all, dir);
+}
+
+/// Shuffle, name files 01.svg …, and keep the lineage of each in a separate key.
+fn write_set(seed: u64, all: &[(u32, BodyTree)], dir: &str) {
+    std::fs::create_dir_all(dir).expect("create output folder");
     let mut order: Vec<usize> = (0..all.len()).collect();
     for i in (1..order.len()).rev() {
         let j = below(
@@ -153,8 +189,7 @@ pub fn silhouettes(seed: u64, lineages: u32, per: usize, steps: u32, dir: &str) 
     std::fs::write(format!("{dir}/answer-key.txt"), key).expect("write key");
     std::fs::write(format!("{dir}/sheet.html"), sheet).expect("write sheet");
     println!(
-        "wrote {} silhouettes, {dir}/sheet.html and {dir}/answer-key.txt (saturations {})",
-        all.len(),
-        sat.count
+        "wrote {} silhouettes, {dir}/sheet.html and {dir}/answer-key.txt",
+        all.len()
     );
 }

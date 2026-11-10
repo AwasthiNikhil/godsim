@@ -1,5 +1,6 @@
-//! The shared genome format (design §4). S0-lite: traits only; the body graph arrives in E4.
+//! The shared genome format (design §4). Traits, plus the body graph from E4 (when bodies are on).
 
+use crate::body::{BodyGraph, GrowthLimits};
 use crate::fixed::{Fx, Sat};
 use crate::rng::{EntityId, Purpose, draw, unit};
 
@@ -21,6 +22,8 @@ pub struct Genome {
     // Behaviour.
     /// Probability of fleeing a sensed threat instead of feeding.
     pub fear: Fx,
+    /// Body graph (E4). When present it replaces size, speed and sense range (`Abilities::of`).
+    pub body: Option<BodyGraph>,
 }
 
 /// (min, max) for each Fx trait, in declaration order.
@@ -66,6 +69,7 @@ impl Genome {
             temp_opt,
             temp_tol,
             fear,
+            body: None,
         }
     }
 
@@ -104,6 +108,11 @@ impl Genome {
             fear: nudge(self.fear, Fx::ZERO, Fx::ONE, sat),
             maturity_ticks: lifespan / 4,
             lifespan_ticks: lifespan,
+            // Body draws use their own counter range (1000+), so trait draws are unchanged.
+            body: self
+                .body
+                .as_ref()
+                .map(|b| b.mutated(seed, child, tick, &GrowthLimits::default(), sat)),
         }
     }
 

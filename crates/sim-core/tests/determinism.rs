@@ -2,7 +2,7 @@
 
 use sim_core::fixed::Fx;
 use sim_core::rng::{EntityId, Purpose, below, draw};
-use sim_core::{ActionKind, InitialWorldConfig, SimParams, World};
+use sim_core::{ActionKind, BodyMode, InitialWorldConfig, SimParams, World};
 
 fn small() -> InitialWorldConfig {
     InitialWorldConfig {
@@ -129,8 +129,30 @@ fn finer_tick_scale_is_deterministic_and_slower() {
     assert_eq!(a.saturation_count(), 0);
     for c in a.creatures() {
         assert!(
-            c.abilities.max_speed <= Fx::ratio(1, 2),
+            c.abilities.land_speed <= Fx::ratio(1, 2),
             "speed is per tick, so 2/4 at most"
         );
     }
+}
+
+#[test]
+fn bodies_are_deterministic_and_change_history() {
+    let params = SimParams {
+        bodies: BodyMode::On,
+        ..SimParams::default()
+    };
+    let go = |batch: u64| {
+        let mut w = World::new(5, small(), params.clone());
+        let mut done = 0;
+        while done < 400 {
+            w.advance(batch.min(400 - done));
+            done += batch;
+        }
+        w
+    };
+    let (a, b) = (go(400), go(17));
+    assert_eq!(a.state_hash(), b.state_hash());
+    assert_eq!(a.saturation_count(), 0);
+    assert!(a.creatures().iter().all(|c| c.genome.body.is_some()));
+    assert_ne!(a.state_hash(), run(5, 400, &[400]).state_hash());
 }

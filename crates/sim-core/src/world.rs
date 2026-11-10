@@ -2,7 +2,8 @@
 
 use crate::abilities::Abilities;
 use crate::behaviour::{self, Buckets, Intent};
-use crate::config::{InitialWorldConfig, SimParams};
+use crate::body::BodyGraph;
+use crate::config::{BodyMode, InitialWorldConfig, SimParams};
 use crate::creature::Creature;
 use crate::environment::Environment;
 use crate::fixed::{Fx, Sat};
@@ -13,6 +14,14 @@ use crate::lineage::Stats;
 use crate::record::{DeathCause, Event};
 use crate::rng::{EntityId, Purpose, chance, draw, unit};
 use crate::spatial::{Grid, Pos};
+
+fn abilities(g: &Genome, params: &SimParams, scale: Fx, sat: &mut Sat) -> Option<Abilities> {
+    if params.bodies == BodyMode::Neutral {
+        Some(Abilities::from_genome(g, scale, sat))
+    } else {
+        Abilities::of(g, scale, sat)
+    }
+}
 
 pub struct World {
     seed: u64,
@@ -38,9 +47,13 @@ impl World {
         let mut creatures: Vec<Creature> = (0..config.founders)
             .map(|f| {
                 let id = EntityId::founder(f);
-                let genome = Genome::founder(seed, id, &mut sat);
+                let mut genome = Genome::founder(seed, id, &mut sat);
+                if params.bodies != BodyMode::Off {
+                    genome.body = Some(BodyGraph::founder(seed, id, &mut sat));
+                }
                 let scale = Fx::from_int(params.tick_scale as i32);
-                let abilities = Abilities::from_genome(&genome, scale, &mut sat);
+                let abilities = abilities(&genome, &params, scale, &mut sat)
+                    .expect("founder bodies always have a core root");
                 let w = Fx::from_int(config.width as i32);
                 let h = Fx::from_int(config.height as i32);
                 let px = unit(draw(seed, id, 0, Purpose::Place, 0));
@@ -170,7 +183,7 @@ impl World {
         let moved: Vec<Pos> = intents
             .iter()
             .enumerate()
-            .map(|(i, &it)| behaviour::step(i, it, &self.creatures, grid, sat))
+            .map(|(i, &it)| behaviour::step(i, it, &self.creatures, grid, &self.env, sat))
             .collect();
         for (c, p) in self.creatures.iter_mut().zip(moved) {
             c.pos = p;
@@ -190,9 +203,19 @@ impl World {
             if grid.distance(pred.pos, prey.pos, sat) > pred.abilities.reach {
                 continue;
             }
-            // Success chance = predator speed / (predator speed + prey speed).
-            let total = sat.add(pred.abilities.max_speed, prey.abilities.max_speed);
-            let p = sat.div(pred.abilities.max_speed, total);
+            // Success chance = predator speed / (predator speed + prey speed), each in its own
+            // habitat, times (1 − prey defence).
+            let hab = |c: &Creature| self.env.habitat[grid.cell_at(c.pos).0 as usize];
+            let ps = pred.abilities.speed(hab(pred));
+            let qs = prey.abilities.speed(hab(prey));
+            let total = sat.add(ps, qs);
+            let p = sat.div(ps, total);
+            let p = if prey.abilities.defence > Fx::ZERO {
+                let open = sat.sub(Fx::ONE, prey.abilities.defence);
+                sat.mul(p, open)
+            } else {
+                p
+            };
             if !chance(draw(seed, pred.id, t, Purpose::Attack, 0), p) {
                 continue;
             }
@@ -251,7 +274,9 @@ impl World {
             let genome = c
                 .genome
                 .mutated(seed, child_id, t, self.params.mutation_step, sat);
-            let abilities = Abilities::from_genome(&genome, scale, sat);
+            let Some(abilities) = abilities(&genome, &self.params, scale, sat) else {
+                continue; // body does not grow: not born
+            };
             let ox = unit(draw(seed, child_id, t, Purpose::Place, 0));
             let oy = unit(draw(seed, child_id, t, Purpose::Place, 1));
             let ox = sat.sub(ox, Fx::ratio(1, 2));

@@ -2,12 +2,19 @@
 //! S0-lite: computed from stand-in traits. From E4: from the body tree.
 //! Every formula here is [Provisional].
 
+use crate::body::{BodyTree, Function, GrowthLimits, grow};
+use crate::environment::Habitat;
 use crate::fixed::{Fx, Sat};
 use crate::genome::Genome;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Abilities {
-    pub max_speed: Fx,
+    /// Cells per tick on land (lowland, highland).
+    pub land_speed: Fx,
+    /// Cells per tick in water (deep, shallow). Tidal flats use the mean of the two.
+    pub water_speed: Fx,
+    /// Share of attacks that fail against this body (shell).
+    pub defence: Fx,
     pub size: Fx,
     /// Can attack prey up to this size (zero for plant eaters).
     pub max_prey_size: Fx,
@@ -63,14 +70,118 @@ impl Abilities {
         };
         let bite = sat.div(bite, scale);
         let upkeep = sat.div(upkeep, scale);
+        let speed = sat.div(g.speed, scale);
         Abilities {
-            max_speed: sat.div(g.speed, scale),
+            land_speed: speed,
+            water_speed: speed,
+            defence: Fx::ZERO,
             size: g.size,
             max_prey_size,
             sense_range: g.sense_range,
             reach,
             bite,
             upkeep,
+        }
+    }
+
+    /// From the genome's body graph if it has one (E4), else from the stand-in traits.
+    /// `None` = the body does not grow (no core root), so the creature is not born.
+    pub fn of(g: &Genome, scale: Fx, sat: &mut Sat) -> Option<Abilities> {
+        match &g.body {
+            None => Some(Abilities::from_genome(g, scale, sat)),
+            Some(b) => {
+                let tree = grow(b, &GrowthLimits::default(), sat)?;
+                Some(Abilities::from_body(&tree, g, scale, sat))
+            }
+        }
+    }
+
+    /// Body → abilities (design §4; E4). The body replaces the size, speed and sense stand-ins;
+    /// diet, physiology and behaviour still come from the genome. Every constant is [Provisional].
+    ///
+    /// - size = 0.35 · Σ length²·width over all parts (body area), in [0.2, 5]
+    /// - land speed from limb length, water speed from fin length (segments help a little in both),
+    ///   each = 0.1 + 0.5 · push / √size, slowed by the shell share, in [0.1, 2]
+    /// - defence = shell share of area, at most 0.6
+    /// - sense range = 1 + 1.5 · Σ sensor length, in [1, 6]
+    /// - largest prey = 1.5 · Σ mouth length, never above 0.7 · size; no mouth, no hunting
+    /// - bite as before, but a body without a mouth grazes at 30%
+    /// - upkeep as before, with speed = the faster of land and water speed
+    pub fn from_body(t: &BodyTree, g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
+        let mut area = Fx::ZERO;
+        let mut shell = Fx::ZERO;
+        let (mut limbs, mut fins, mut segs, mut sensors, mut mouths) =
+            (Fx::ZERO, Fx::ZERO, Fx::ZERO, Fx::ZERO, Fx::ZERO);
+        for p in &t.parts {
+            let l2 = sat.mul(p.length, p.length);
+            let a = sat.mul(l2, p.width);
+            area = sat.add(area, a);
+            let acc = match p.function {
+                Function::Shell => {
+                    shell = sat.add(shell, a);
+                    continue;
+                }
+                Function::Limb => &mut limbs,
+                Function::Fin => &mut fins,
+                Function::Segment => &mut segs,
+                Function::Sensor => &mut sensors,
+                Function::Mouth => &mut mouths,
+                Function::Core => continue,
+            };
+            *acc = sat.add(*acc, p.length);
+        }
+        let size = sat
+            .mul(area, Fx::ratio(35, 100))
+            .clamp(Fx::ratio(2, 10), Fx::from_int(5));
+        let shell_share = if area > Fx::ZERO {
+            sat.div(shell, area)
+        } else {
+            Fx::ZERO
+        };
+        let root = sat.sqrt(size);
+        let wriggle = sat.mul(segs, Fx::ratio(3, 10));
+        let drag = sat.div(shell_share, Fx::from_int(2));
+        let slow = sat.sub(Fx::ONE, drag);
+        let speed_of = |push: Fx, sat: &mut Sat| {
+            let p = sat.add(push, wriggle);
+            let p = sat.div(p, root);
+            let p = sat.mul(p, Fx::ratio(1, 2));
+            let v = sat.add(Fx::ratio(1, 10), p);
+            sat.mul(v, slow).clamp(Fx::ratio(1, 10), Fx::from_int(2))
+        };
+        let land = speed_of(limbs, sat);
+        let water = speed_of(fins, sat);
+        let sense = sat.mul(sensors, Fx::ratio(3, 2));
+        let sense = sat.add(Fx::ONE, sense).clamp(Fx::ONE, Fx::from_int(6));
+
+        // Reuse the stand-in formulas for bite, reach and upkeep, fed with the body's values.
+        let stand_in = Genome {
+            size,
+            speed: land.max(water),
+            sense_range: sense,
+            body: None,
+            ..g.clone()
+        };
+        let mut a = Abilities::from_genome(&stand_in, scale, sat);
+        let mouth_prey = sat.mul(mouths, Fx::ratio(3, 2));
+        a.max_prey_size = a.max_prey_size.min(mouth_prey);
+        if mouths == Fx::ZERO {
+            a.bite = sat.mul(a.bite, Fx::ratio(3, 10));
+        }
+        a.land_speed = sat.div(land, scale);
+        a.water_speed = sat.div(water, scale);
+        a.defence = shell_share.min(Fx::ratio(6, 10));
+        a
+    }
+
+    /// Speed in a habitat.
+    pub fn speed(&self, h: Habitat) -> Fx {
+        match h {
+            Habitat::DeepWater | Habitat::ShallowWater => self.water_speed,
+            Habitat::Lowland | Habitat::Highland => self.land_speed,
+            Habitat::TidalFlat => {
+                Fx::from_raw((self.land_speed.raw() + self.water_speed.raw()) / 2)
+            }
         }
     }
 

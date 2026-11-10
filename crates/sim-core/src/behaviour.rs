@@ -104,9 +104,18 @@ pub fn decide(
 }
 
 /// New position after acting on an intent. Uses start-of-tick positions of others.
-pub fn step(i: usize, intent: Intent, creatures: &[Creature], grid: &Grid, sat: &mut Sat) -> Pos {
+pub fn step(
+    i: usize,
+    intent: Intent,
+    creatures: &[Creature],
+    grid: &Grid,
+    env: &Environment,
+    sat: &mut Sat,
+) -> Pos {
     let me = &creatures[i];
-    let speed = me.abilities.max_speed;
+    let speed = me
+        .abilities
+        .speed(env.habitat[grid.cell_at(me.pos).0 as usize]);
     let towards = |target: Pos, sign: i64, sat: &mut Sat| -> Pos {
         let dx = grid.dx(me.pos.x, target.x);
         let dy = sat.sub(target.y, me.pos.y);

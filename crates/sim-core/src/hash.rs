@@ -57,6 +57,19 @@ pub fn state_hash(tick: u64, env: &Environment, creatures: &[Creature]) -> [u8; 
         }
         h.update(&g.maturity_ticks.to_le_bytes());
         h.update(&g.lifespan_ticks.to_le_bytes());
+        if let Some(b) = &g.body {
+            h.update(&[b.root, b.nodes.len() as u8, b.edges.len() as u8]);
+            for nd in &b.nodes {
+                h.update(&[nd.function as u8, nd.recursion_limit]);
+                fx(&mut h, nd.length);
+                fx(&mut h, nd.width);
+            }
+            for e in &b.edges {
+                h.update(&[e.from, e.to, e.repeat, e.mirror as u8]);
+                fx(&mut h, e.position);
+                fx(&mut h, e.angle);
+            }
+        }
         // Abilities are derived from the genome, so they are not hashed separately.
     }
     *h.finalize().as_bytes()

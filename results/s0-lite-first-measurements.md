@@ -173,3 +173,48 @@ body size, diet and preferred temperature holding ≥ 2% of the population **[Pr
   in some seeds, large hunters (size ~3.5, diet ~0.55). Size and diet split; **preferred temperature never
   shows more than one peak**, so climate is not yet creating regional types even with tolerance costed.
 - Moon vs no moon: 2.3 vs 2.1 kinds. Too small a difference to read anything into.
+
+## E4 step 2: body → abilities, and "body traits measurably change survival"
+
+With `SimParams::bodies = On`, abilities come from the grown body (`Abilities::from_body`):
+size from body area, land speed from limbs, water speed from fins (segments help both),
+armour from shell share, sense range from sensors, largest prey from mouth size. All constants
+are [Provisional]. With bodies `Off`, history is bit-identical to before (hash `dbf5015fe655dc63`
+at 3,000 ticks on 64×32; a 300-tick export is byte-identical).
+
+Deviation from the design: bodies are a run-time switch (`BodyMode::Off | Neutral | On`), not
+the `body-graph` compile feature, so one binary can run the drift control below.
+
+**Test** (`sim-cli body-selection --seeds 10 --generations 500`, 64×32): each seed runs twice
+from the same founders and bodies. `On`: the body decides abilities. `Neutral`: bodies are
+inherited and mutate but abilities come from the stand-in traits, so body change is drift.
+Two-sided sign test per feature over the paired seeds (population means).
+
+| feature | founders | neutral | selected | selected > neutral | p |
+|---|---|---|---|---|---|
+| parts | 3.80 | 2.08 | 7.71 | 10/10 | 0.002 |
+| segments | 0.35 | 0.08 | 3.08 | 9/9 | 0.004 |
+| limbs | 0.63 | 0.20 | 0.29 | 4/9 | 1.0 |
+| fins | 0.50 | 0.29 | 0.28 | 3/6 | 1.0 |
+| mouths | 0.41 | 0.26 | 2.07 | 10/10 | 0.002 |
+| sensors | 0.46 | 0.28 | 0.86 | 7/10 | 0.34 |
+| shells | 0.45 | 0.13 | 0.72 | 6/8 | 0.29 |
+| size | 1.07 | 0.63 | 1.56 | 10/10 | 0.002 |
+| land speed | 0.45 | 0.21 | 0.60 | 10/10 | 0.002 |
+| water speed | 0.40 | 0.20 | 0.60 | 10/10 | 0.002 |
+| defence | 0.11 | 0.04 | 0.12 | 5/8 | 0.73 |
+| sense range | 1.77 | 1.52 | 1.71 | 6/10 | 0.75 |
+
+**PASS** (6 of 12 features differ from drift). Under drift, bodies shrink toward a bare core
+(mutation removes more than it adds). Under selection they keep about 8 parts, mostly segments
+and mouths.
+
+**Finding:** limbs and fins are *not* selected. Segments give the same speed on land and in water
+(the "wriggle" term), so a segmented worm beats a specialist in both. That removes the land/water
+split the per-terrain speeds were meant to create. Next tuning step: make segments much weaker
+propulsion (or water-only), so limbs and fins have to earn their place.
+
+**Silhouettes from evolved lineages** (`sim-cli silhouettes`, seed 1, 300 generations): one founder
+lineage took over, so the 3 lineages are clades that split 133 generations in. The author's own
+(non-blind, not evidence) grouping matched the key almost completely; the three clades look
+visibly different (four-lobed, sensor-stalked long body, three-petalled).

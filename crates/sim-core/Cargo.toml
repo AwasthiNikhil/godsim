@@ -8,7 +8,6 @@ blake3 = "1"
 
 [features]
 ground-truth = []
-body-graph = []
 
 [lints.rust]
 unsafe_code = "forbid"

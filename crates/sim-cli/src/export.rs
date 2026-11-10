@@ -43,7 +43,7 @@ fn creature_row(out: &mut String, names: &mut Names, c: &Creature) {
         f(c.pos.x),
         f(c.pos.y),
         c.root,
-        f(c.genome.size),
+        f(c.abilities.size),
         f(c.genome.diet)
     );
 }
@@ -122,8 +122,15 @@ fn create(path: &str) -> BufWriter<std::fs::File> {
 }
 
 /// `export`: a whole-world replay log, a frame every `every` ticks plus every birth and death.
-pub fn export(seed: u64, cfg: InitialWorldConfig, ticks: u64, every: u64, path: &str) {
-    let mut w = World::new(seed, cfg.clone(), SimParams::default());
+pub fn export(
+    seed: u64,
+    cfg: InitialWorldConfig,
+    params: SimParams,
+    ticks: u64,
+    every: u64,
+    path: &str,
+) {
+    let mut w = World::new(seed, cfg.clone(), params);
     let mut out = create(path);
     let mut names = Names::default();
     let (gw, gh) = (cfg.width, cfg.height);

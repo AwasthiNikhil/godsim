@@ -1,4 +1,4 @@
-//! Body grammar (Decision B1, design §4, entry #25). Feature `body-graph`.
+//! Body grammar (Decision B1, design §4, entry #25). Used when `SimParams::bodies` is not `Off`.
 //!
 //! The genome's body section is a directed graph of modules. Growth turns it into a tree of parts,
 //! deterministically, once at birth. Shapes are for display only; the simulation reads abilities.

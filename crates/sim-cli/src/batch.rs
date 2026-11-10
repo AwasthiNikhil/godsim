@@ -5,7 +5,7 @@ use sim_core::creature::Creature;
 use sim_core::environment::Habitat;
 use sim_core::fixed::{Fx, Sat};
 use sim_core::record::HabitatAttribution;
-use sim_core::{InitialWorldConfig, SimParams, World};
+use sim_core::{BodyMode, InitialWorldConfig, SimParams, World};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::sync::Mutex;
@@ -89,7 +89,7 @@ const BINS: usize = 24;
 
 fn kind_values(c: &Creature) -> [f64; 3] {
     let f = |v: Fx| v.raw() as f64 / 65536.0;
-    [f(c.genome.size), f(c.genome.diet), f(c.genome.temp_opt)]
+    [f(c.abilities.size), f(c.genome.diet), f(c.genome.temp_opt)]
 }
 
 /// Cut points between the distinct peaks of one trait's histogram.
@@ -183,19 +183,39 @@ struct RunResult {
     report: String,
 }
 
-fn named_config(name: &str, base: &InitialWorldConfig) -> InitialWorldConfig {
-    match name {
+/// `base`/`tides-on`, `tides-off`/`no-moon`, and the same with a `bodies-` prefix (E4 bodies on).
+fn named_config(name: &str, base: &InitialWorldConfig) -> (InitialWorldConfig, SimParams) {
+    let (bodies, rest) = match name.strip_prefix("bodies") {
+        Some("") => (BodyMode::On, "base"),
+        Some(r) => (BodyMode::On, r.trim_start_matches('-')),
+        None => (BodyMode::Off, name),
+    };
+    let cfg = match rest {
         "base" | "tides-on" => base.clone(),
         "no-moon" | "tides-off" => InitialWorldConfig {
             moon: None,
             ..base.clone()
         },
-        other => panic!("unknown config {other} (base, tides-on, tides-off, no-moon)"),
-    }
+        other => panic!(
+            "unknown config {other} (base, tides-on, tides-off, no-moon, each optionally bodies-…)"
+        ),
+    };
+    (
+        cfg,
+        SimParams {
+            bodies,
+            ..SimParams::default()
+        },
+    )
 }
 
-fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -> RunResult {
-    let mut w = World::new(seed, cfg, SimParams::default());
+fn run_one(
+    config: &str,
+    (cfg, params): (InitialWorldConfig, SimParams),
+    seed: u64,
+    generations: u64,
+) -> RunResult {
+    let mut w = World::new(seed, cfg, params);
     let mut habitat = HabitatAttribution::default();
     // ponytail: hard cap so a run with a very long generation time still ends.
     let cap = generations * 400;
@@ -304,13 +324,17 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
         "\n\ntrait spread (10th–90th percentile, and as a share of the trait's full range)"
     );
     let f = |v: Fx| v.raw() as f64 / 65536.0;
+    // Size, speed and sense are read from abilities, so with bodies on they are the body's values.
     let g = |c: &Creature| {
-        let t = &c.genome;
+        let (t, a) = (&c.genome, &c.abilities);
         [
-            t.size,
-            t.speed,
+            a.size,
+            a.land_speed,
+            a.water_speed,
+            a.defence,
+            a.max_prey_size,
             t.diet,
-            t.sense_range,
+            a.sense_range,
             t.repro_energy,
             t.temp_opt,
             t.temp_tol,
@@ -318,14 +342,17 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
     };
     let names = [
         "size",
-        "speed",
+        "land_speed",
+        "water_speed",
+        "defence",
+        "max_prey",
         "diet",
         "sense",
         "repro_energy",
         "temp_opt",
         "temp_tol",
     ];
-    let full = [4.8, 1.9, 1.0, 5.0, 38.0, 40.0, 23.0];
+    let full = [4.8, 1.9, 1.9, 0.6, 3.5, 1.0, 5.0, 38.0, 40.0, 23.0];
     for k in 0..names.len() {
         let mut v: Vec<f64> = w.creatures().iter().map(|c| f(g(c)[k])).collect();
         v.sort_by(f64::total_cmp);
@@ -369,7 +396,7 @@ fn run_one(config: &str, cfg: InitialWorldConfig, seed: u64, generations: u64) -
 
 pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations: u64, dir: &str) {
     let base = &base;
-    let jobs: Vec<(String, InitialWorldConfig, u64)> = configs
+    let jobs: Vec<(String, (InitialWorldConfig, SimParams), u64)> = configs
         .iter()
         .flat_map(|&c| (1..=seeds).map(move |s| (c.to_string(), named_config(c, base), s)))
         .collect();

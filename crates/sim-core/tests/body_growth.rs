@@ -1,5 +1,4 @@
-//! Body growth rules (design entry #29). Run with `--features body-graph`.
-#![cfg(feature = "body-graph")]
+//! Body growth rules (design entry #29).
 
 use sim_core::body::{BodyGraph, Edge, Function, GrowthLimits, Node, grow};
 use sim_core::fixed::{Fx, Sat};

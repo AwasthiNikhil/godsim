@@ -38,10 +38,12 @@ Every command is `./target/release/sim-cli <command> [flags]`. Flags are listed 
 | `timing` | Throughput at four world sizes | ~1 min | table in the terminal |
 | `export` | Records a world for the viewer | ~5 s | `runs/export/world.jsonl` |
 | `chase-clips` | Records kills at tick scales 1, 2, 4, 8, shuffled | ~10 s | `runs/chase-clips/` |
-| `silhouettes` | 30 body silhouettes from 3 lineages, shuffled, for the E4 grouping test | ~1 s | `runs/silhouettes/sheet.html` (open in a browser) and `answer-key.txt` |
+| `silhouettes` | Evolves a world with bodies on (300 generations), takes 30 creatures from 3 lineages, shuffled, for the E4 grouping test | ~1 min | `runs/silhouettes/sheet.html` (open in a browser) and `answer-key.txt` |
 | `batch --seeds 10 --generations 2000 --configs base,tides-off` | Survival and diversity check, tides on/off | minutes | `runs/batch/summary.tsv` plus one report per run |
+| `batch --configs bodies,bodies-tides-off` | The same check with E4 bodies deciding abilities | minutes | as above |
+| `body-selection --seeds 10 --generations 500` | E4: do body features evolve differently from neutral drift? (sign test per feature) | a few minutes | table and PASS/FAIL in the terminal |
 
-Add `--seed N` to most commands to get a different world. The same seed always gives the same world.
+Add `--seed N` to most commands to get a different world. Add `--bodies` to `export` to watch a world with E4 bodies. The same seed always gives the same world.
 `runs/` is not committed; delete it whenever you like.
 
 ### 4. Watch a world
@@ -58,7 +60,8 @@ Most tuning lives in two places:
 
 - `crates/sim-core/src/config.rs`: world size, moon, sea level, founders (`InitialWorldConfig`)
   and constants like plant cap, tide range and mutation step (`SimParams`).
-- `crates/sim-core/src/abilities.rs`: how traits become abilities (speed, bite, upkeep, what can eat what).
+- `crates/sim-core/src/abilities.rs`: how traits, or the grown body (`from_body`), become abilities (speed on land and in water, bite, armour, upkeep, what can eat what).
+- `crates/sim-core/src/body.rs`: the body grammar (module types, attachment rules, growth, mutation).
 
 A typical loop:
 

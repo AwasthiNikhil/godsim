@@ -63,6 +63,19 @@ pub struct SimParams {
     /// lifespan, maturity and environment periods are multiplied by s. 1 = reference.
     /// ponytail: attack attempts are not rescaled, so finer scales give more tries per encounter.
     pub tick_scale: u32,
+    pub bodies: BodyMode,
+}
+
+/// E4 body switch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BodyMode {
+    /// S0-lite rules: no body graph; abilities from the size, speed and sense stand-ins.
+    Off,
+    /// Control for "body traits change survival": bodies are inherited and mutate, but abilities
+    /// still come from the stand-ins, so body changes are pure drift.
+    Neutral,
+    /// Abilities come from the grown body.
+    On,
 }
 
 impl Default for SimParams {
@@ -78,6 +91,7 @@ impl Default for SimParams {
             nutrient_return: Fx::ratio(3, 10),
             mutation_step: Fx::ratio(5, 100),
             tick_scale: 1,
+            bodies: BodyMode::Off,
         }
     }
 }

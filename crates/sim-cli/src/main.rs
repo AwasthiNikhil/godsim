@@ -2,19 +2,21 @@
 //!
 //!   sim-cli determinism [--ticks N] [--seed S] [--width W --height H]
 //!   sim-cli timing      [--ticks N] [--warmup N] [--repeats R] [--seed S]
-//!   sim-cli export      [--ticks N] [--every K] [--seed S] [--width W --height H] [--out FILE]
-//!   sim-cli batch       [--seeds 10] [--generations 2000] [--configs base,tides-off] [--width W --height H] [--out DIR]
-//!   sim-cli silhouettes [--lineages 3] [--per 10] [--steps 4] [--seed S] [--out DIR]
+//!   sim-cli export      [--ticks N] [--every K] [--seed S] [--bodies] [--width W --height H] [--out FILE]
+//!   sim-cli batch       [--seeds 10] [--generations 2000] [--configs base,tides-off,bodies,bodies-tides-off] [--width W --height H] [--out DIR]
+//!   sim-cli body-selection [--seeds 10] [--generations 500] [--width W --height H]
+//!   sim-cli silhouettes [--generations 300] [--lineages 3] [--per 10] [--seed S] [--width W --height H] [--out DIR]
 //!   sim-cli chase-clips [--scales 1,2,4,8] [--clips N] [--warmup N] [--window N] [--seed S] [--out DIR]
 //!
 //! ponytail: hand-rolled flag parsing; add a parser crate when there are more than a handful of flags.
 
 mod batch;
 mod export;
+mod selection;
 mod svg;
 
 use sim_core::fixed::Fx;
-use sim_core::{InitialWorldConfig, SimParams, World};
+use sim_core::{BodyMode, InitialWorldConfig, SimParams, World};
 use std::time::Instant;
 
 fn flag(args: &[String], name: &str, default: u64) -> u64 {
@@ -167,6 +169,14 @@ fn main() {
         Some("export") => export::export(
             flag(&args, "--seed", 1),
             config(&args, 96, 48),
+            SimParams {
+                bodies: if args.iter().any(|a| a == "--bodies") {
+                    BodyMode::On
+                } else {
+                    BodyMode::Off
+                },
+                ..SimParams::default()
+            },
             flag(&args, "--ticks", 2_000),
             flag(&args, "--every", 5).max(1),
             text(&args, "--out", "runs/export/world.jsonl"),
@@ -181,11 +191,17 @@ fn main() {
                 text(&args, "--out", "runs/batch"),
             )
         }
+        Some("body-selection") => selection::body_selection(
+            config(&args, 64, 32),
+            flag(&args, "--seeds", 10),
+            flag(&args, "--generations", 500),
+        ),
         Some("silhouettes") => svg::silhouettes(
             flag(&args, "--seed", 1),
-            flag(&args, "--lineages", 3) as u32,
+            config(&args, 64, 32),
+            flag(&args, "--generations", 300),
+            flag(&args, "--lineages", 3) as usize,
             flag(&args, "--per", 10) as usize,
-            flag(&args, "--steps", 4) as u32,
             text(&args, "--out", "runs/silhouettes"),
         ),
         Some("chase-clips") => {
@@ -206,7 +222,7 @@ fn main() {
         }
         _ => {
             eprintln!(
-                "usage: sim-cli determinism|timing|export|batch|silhouettes|chase-clips [flags]  (see source header)"
+                "usage: sim-cli determinism|timing|export|batch|body-selection|silhouettes|chase-clips [flags]  (see source header)"
             );
             std::process::exit(2);
         }

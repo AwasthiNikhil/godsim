@@ -2,7 +2,6 @@
 
 pub mod abilities;
 pub mod behaviour;
-#[cfg(feature = "body-graph")]
 pub mod body;
 pub mod config;
 pub mod creature;
@@ -17,6 +16,6 @@ pub mod rng;
 pub mod spatial;
 pub mod world;
 
-pub use config::{InitialWorldConfig, Moon, SimParams};
+pub use config::{BodyMode, InitialWorldConfig, Moon, SimParams};
 pub use input::ActionKind;
 pub use world::World;
