@@ -241,3 +241,24 @@ axes too, 3/10 reach 5 kinds (mean 3.7). Armour shows 3 peaks in half the runs, 
 balance has 2 peaks in most, so bodies add real kinds that the gate's trait list cannot see.
 Whether the gate should count body axes is the author's decision; the gate measure is unchanged.
 Hunting persists with bodies (seed 1: a 37% kind at diet 0.35, size 2.6).
+
+### Gate measure counts body axes (author decision, 2026-11-10)
+
+With bodies on, the ≥ 5 kinds gate now counts kinds over size, diet, temp_opt, **water share**
+(water speed / (land + water speed)) and **armour**. Without bodies it stays on the three traits.
+Re-scored, the run above (segments swim-only, moon on) gives **3/10** reaching 5 kinds (mean 3.7).
+
+### Experiment: richer deep water (fertility 0.2 → 0.8) — reverted
+
+Aim: give swimmers a niche so fins pay off. 5 seeds × 1,000 generations looked promising
+(mean kinds 3.6 → 4.4), but the full gate did not confirm it:
+
+| config | kinds per seed (1–10) | mean | ≥ 5 kinds |
+|---|---|---|---|
+| bodies, deep 0.2 (kept) | 3 4 2 4 2 5 4 6 2 5 | 3.7 | 3/10 |
+| bodies, deep 0.8 | 4 3 4 3 5 5 3 4 2 3 | 3.6 | 2/10 |
+| bodies-tides-off, deep 0.8 | 2 7 3 5 2 7 4 5 4 2 | 4.1 | 4/10 |
+
+Deep-water births rose 3–4×, but fins were still not selected (7/10 seeds, p 0.34). No gain on the
+gate, so the change is reverted. (There is no tides-off control at 0.2 with bodies yet, so the
+tides-off row is not a comparison.)

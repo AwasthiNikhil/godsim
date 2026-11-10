@@ -92,8 +92,9 @@ fn kind_values(c: &Creature) -> Vec<f64> {
     vec![f(c.abilities.size), f(c.genome.diet), f(c.genome.temp_opt)]
 }
 
-/// Diagnostic only (not the gate): the gate traits plus two body axes, so body-made kinds show.
-/// water share = water speed / (land + water speed): 0 = walker, 1 = swimmer.
+/// With bodies on, the gate counts kinds over these: the three traits plus two body axes, so
+/// body-made kinds count (author decision, 2026-11-10). Without bodies there are no body axes and
+/// the gate uses `KIND_TRAITS`. water share = water speed / (land + water speed): 0 = walker, 1 = swimmer.
 pub const BODY_KIND_TRAITS: [(&str, f64, f64); 5] = [
     ("size", 0.2, 5.0),
     ("diet", 0.0, 1.0),
@@ -262,6 +263,9 @@ fn run_one(
     let alive = !w.creatures().is_empty();
     let survived = alive && gens >= generations;
     let (cut, kd) = kinds(w.creatures());
+    let bodies = w.creatures().iter().any(|c| c.genome.body.is_some());
+    let body_kd = bodies.then(|| kinds_by(w.creatures(), &BODY_KIND_TRAITS, body_kind_values));
+    let gate_kinds = body_kd.as_ref().map_or(kd.len(), |(_, k)| k.len());
     let cl = clusters(w.creatures(), LINK);
     // Diagnostic: the same population counted at stricter links, plus the spread of each trait.
     let strict: Vec<(f64, usize)> = [Fx::ratio(35, 100), Fx::ratio(25, 100), Fx::ratio(15, 100)]
@@ -309,7 +313,12 @@ fn run_one(
     );
     let _ = writeln!(
         r,
-        "\nkinds (gate measure): {}  — peaks per trait: {}",
+        "\nkinds on size, diet, temp_opt{}: {}  — peaks per trait: {}",
+        if bodies {
+            " (pre-body measure)"
+        } else {
+            " (gate measure)"
+        },
         kd.len(),
         KIND_TRAITS
             .iter()
@@ -331,15 +340,14 @@ fn run_one(
             k.share_pct, k.key
         );
     }
-    if w.creatures().iter().any(|c| c.genome.body.is_some()) {
-        let (bcut, bk) = kinds_by(w.creatures(), &BODY_KIND_TRAITS, body_kind_values);
+    if let Some((bcut, bk)) = &body_kd {
         let _ = writeln!(
             r,
-            "\nkinds incl. body axes (diagnostic, not the gate): {}  — peaks per trait: {}",
+            "\nkinds incl. body axes (gate measure with bodies): {}  — peaks per trait: {}",
             bk.len(),
             BODY_KIND_TRAITS
                 .iter()
-                .zip(&bcut)
+                .zip(bcut)
                 .map(|((n, _, _), c)| format!("{n} {}", c.len() + 1))
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -349,7 +357,7 @@ fn run_one(
             "{:>7} {:>6} {:>6} {:>8} {:>6} {:>7}",
             "share", "size", "diet", "temp_opt", "water", "defence"
         );
-        for k in &bk {
+        for k in bk {
             let m = &k.mean;
             let _ = writeln!(
                 r,
@@ -445,7 +453,7 @@ fn run_one(
         ticks: w.tick(),
         generations: gens,
         population: w.creatures().len(),
-        kinds: kd.len(),
+        kinds: gate_kinds,
         clusters: cl.len(),
         tidal_share_pct,
         report: r,
