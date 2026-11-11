@@ -348,3 +348,24 @@ bodies-off hash unchanged, `dbf5015fe655dc63`). 10 seeds × 2,000 generations (`
 - First time preferred temperature shows 2 peaks (moon 3/10 seeds, no moon 2/10).
 - body-selection still PASS but 4/12 (was 7/12): parts, limbs, mouths, size. Speeds and segments are no
   longer selected above drift, as expected once speed costs more.
+
+## Tidal flats that flood and drain (2026-11-11, reverted)
+
+Tried: tidal flats count as water when the tide is above their height and land otherwise, instead of
+the mean of the two speeds. 10 seeds × 2,000 generations with the moon (`runs/batch-flood/`; the no-moon
+half is unchanged by construction and matched the previous run exactly).
+
+| Seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | mean | ≥ 5 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Moon, gate (flooding) | 5 | 6 | 6 | 3 | 5 | 5 | 6 | 2 | 3 | 2 | 4.3 | 6/10 |
+| Moon, gate (mean speed, kept) | 5 | 3 | 8 | 4 | 4 | 6 | 6 | 5 | 2 | 6 | 4.9 | 6/10 |
+| No moon, gate | 2 | 4 | 4 | 7 | 7 | 4 | 3 | 7 | 3 | 7 | 4.8 | 4/10 |
+
+- Water-share peaks per seed: 2.0 with flooding vs 2.2 without the moon. Moon − no moon on the gate:
+  5 higher, 4 lower, 1 equal. **No moon effect.**
+- Why, in hindsight: the tide turns every 10 ticks and a generation is ~90 ticks, so a creature lives
+  through many tides and its time-averaged speed on a flat is the mean again. Flooding cannot create a
+  niche at this tide period. Reverted: same behaviour as the mean, lower mean kinds.
+- Conclusion so far: in S0-lite the moon changes where life is born (a third of births on tidal flats)
+  but not how many kinds there are. A moon effect on diversity would need a mechanism other than
+  movement, e.g. food that exists only on flats, or a tide period near a generation.
