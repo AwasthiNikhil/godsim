@@ -112,22 +112,20 @@ fn body_kind_values(c: &Creature) -> Vec<f64> {
     v
 }
 
-/// Diagnostic only: the gate axes plus mouth grip (tough bite / (soft + tough bite)), 0 = soft-food
-/// mouth, up to 2/3 = full grinder.
+/// Diagnostic only: the gate axes plus grinder or not (1 if the mouth can eat tough plants, i.e.
+/// mouth length > 0.8; else 0). Binary on purpose, so mouth-size steps cannot add kinds.
 pub const GRIP_KIND_TRAITS: [(&str, f64, f64); 6] = [
     ("size", 0.2, 5.0),
     ("diet", 0.0, 1.0),
     ("temp_opt", -10.0, 30.0),
     ("water_share", 0.0, 1.0),
     ("defence", 0.0, 0.6),
-    ("grip", 0.0, 0.7),
+    ("grinder", 0.0, 1.0),
 ];
 
 fn grip_kind_values(c: &Creature) -> Vec<f64> {
-    let f = |v: Fx| v.raw() as f64 / 65536.0;
-    let (b, t) = (f(c.abilities.bite), f(c.abilities.tough_bite));
     let mut v = body_kind_values(c);
-    v.push(if b + t > 0.0 { t / (b + t) } else { 0.0 });
+    v.push(if c.abilities.tough_bite > Fx::ZERO { 1.0 } else { 0.0 });
     v
 }
 
@@ -456,7 +454,7 @@ fn run_one(
         let (gcut, gk) = kinds_by(w.creatures(), &GRIP_KIND_TRAITS, grip_kind_values);
         let _ = writeln!(
             r,
-            "\nkinds incl. mouth grip (diagnostic, not the gate): {}  — grip peaks {}",
+            "\nkinds incl. grinder yes/no (diagnostic, not the gate): {}  — grinder groups {}",
             gk.len(),
             gcut[5].len() + 1
         );

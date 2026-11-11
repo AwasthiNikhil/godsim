@@ -306,3 +306,21 @@ like over-splitting. Whether the gate counts grip is the author's decision.
 
 `body-selection` with the trade-off: PASS, 7 of 12 features (mouths 10/10, limbs 10/10,
 segments 9/10, size 9/10, both speeds 10/10).
+
+## Stricter mouth axis: grinder yes/no (2026-11-11)
+
+The grip diagnostic counted mouth size in steps, so "1 mouth vs 2 mouths" could add kinds. Replaced it
+with a binary axis: grinder (mouth can eat tough plants) or not. Gate measure unchanged. 10 seeds ×
+2,000 generations, with and without the moon (`runs/batch-grinder/`).
+
+| Seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | mean | ≥ 5 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Moon, gate | 2 | 4 | 2 | 7 | 2 | 3 | 6 | 7 | 2 | 3 | 3.8 | 3/10 |
+| Moon, + grinder yes/no | 3 | 5 | 3 | 10 | 3 | 6 | 7 | 8 | 3 | 4 | 5.2 | 5/10 |
+| No moon, gate | 3 | 4 | 5 | 5 | 2 | 3 | 3 | 4 | 2 | 3 | 3.4 | 2/10 |
+| No moon, + grinder yes/no | 4 | 5 | 7 | 6 | 3 | 5 | 4 | 5 | 3 | 5 | 4.7 | 6/10 |
+
+- All 20 worlds survived; every world splits into both groups (grinders 53–92%).
+- The graded grip count (8/10) was partly the step artefact: the strict version gives 5/10.
+- The moon does not raise diversity with bodies on (no moon 6/10 vs moon 5/10 on this measure).
+- Seed 4 still reaches 10 kinds with a binary axis, so its high count comes from the other axes.
