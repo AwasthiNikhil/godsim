@@ -92,29 +92,12 @@ fn kind_values(c: &Creature) -> Vec<f64> {
     vec![f(c.abilities.size), f(c.genome.diet), f(c.genome.temp_opt)]
 }
 
-/// With bodies on, the gate counts kinds over these: the three traits plus two body axes, so
-/// body-made kinds count (author decision, 2026-11-10). Without bodies there are no body axes and
-/// the gate uses `KIND_TRAITS`. water share = water speed / (land + water speed): 0 = walker, 1 = swimmer.
-pub const BODY_KIND_TRAITS: [(&str, f64, f64); 5] = [
-    ("size", 0.2, 5.0),
-    ("diet", 0.0, 1.0),
-    ("temp_opt", -10.0, 30.0),
-    ("water_share", 0.0, 1.0),
-    ("defence", 0.0, 0.6),
-];
-
-fn body_kind_values(c: &Creature) -> Vec<f64> {
-    let f = |v: Fx| v.raw() as f64 / 65536.0;
-    let a = &c.abilities;
-    let (l, w) = (f(a.land_speed), f(a.water_speed));
-    let mut v = kind_values(c);
-    v.extend([w / (l + w), f(a.defence)]);
-    v
-}
-
-/// Diagnostic only: the gate axes plus grinder or not (1 if the mouth can eat tough plants, i.e.
-/// mouth length > 0.8; else 0). Binary on purpose, so mouth-size steps cannot add kinds.
-pub const GRIP_KIND_TRAITS: [(&str, f64, f64); 6] = [
+/// With bodies on, the gate counts kinds over these: the three traits plus three body axes, so
+/// body-made kinds count (author decisions, 2026-11-10 and 2026-11-11). Without bodies there are no
+/// body axes and the gate uses `KIND_TRAITS`. water share = water speed / (land + water speed):
+/// 0 = walker, 1 = swimmer. grinder = 1 if the mouth can eat tough plants (mouth length > 0.8), else 0;
+/// binary on purpose, so mouth-size steps cannot add kinds.
+pub const BODY_KIND_TRAITS: [(&str, f64, f64); 6] = [
     ("size", 0.2, 5.0),
     ("diet", 0.0, 1.0),
     ("temp_opt", -10.0, 30.0),
@@ -123,13 +106,13 @@ pub const GRIP_KIND_TRAITS: [(&str, f64, f64); 6] = [
     ("grinder", 0.0, 1.0),
 ];
 
-fn grip_kind_values(c: &Creature) -> Vec<f64> {
-    let mut v = body_kind_values(c);
-    v.push(if c.abilities.tough_bite > Fx::ZERO {
-        1.0
-    } else {
-        0.0
-    });
+fn body_kind_values(c: &Creature) -> Vec<f64> {
+    let f = |v: Fx| v.raw() as f64 / 65536.0;
+    let a = &c.abilities;
+    let (l, w) = (f(a.land_speed), f(a.water_speed));
+    let grinder = if a.tough_bite > Fx::ZERO { 1.0 } else { 0.0 };
+    let mut v = kind_values(c);
+    v.extend([w / (l + w), f(a.defence), grinder]);
     v
 }
 
@@ -375,15 +358,15 @@ fn run_one(
         );
         let _ = writeln!(
             r,
-            "{:>7} {:>6} {:>6} {:>8} {:>6} {:>7}",
-            "share", "size", "diet", "temp_opt", "water", "defence"
+            "{:>7} {:>6} {:>6} {:>8} {:>6} {:>7} {:>7}",
+            "share", "size", "diet", "temp_opt", "water", "defence", "grinder"
         );
         for k in bk {
             let m = &k.mean;
             let _ = writeln!(
                 r,
-                "{:>6.1}% {:>6.2} {:>6.2} {:>8.1} {:>6.2} {:>7.2}",
-                k.share_pct, m[0], m[1], m[2], m[3], m[4]
+                "{:>6.1}% {:>6.2} {:>6.2} {:>8.1} {:>6.2} {:>7.2} {:>7.2}",
+                k.share_pct, m[0], m[1], m[2], m[3], m[4], m[5]
             );
         }
     }
@@ -452,15 +435,6 @@ fn run_one(
             "{:>13} {lo:>7.2} – {hi:>7.2}  ({:>3.0}%)",
             names[k],
             (hi - lo) * 100.0 / full[k]
-        );
-    }
-    if bodies {
-        let (gcut, gk) = kinds_by(w.creatures(), &GRIP_KIND_TRAITS, grip_kind_values);
-        let _ = writeln!(
-            r,
-            "\nkinds incl. grinder yes/no (diagnostic, not the gate): {}  — grinder groups {}",
-            gk.len(),
-            gcut[5].len() + 1
         );
     }
     let env = w.env();

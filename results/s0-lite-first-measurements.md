@@ -408,3 +408,9 @@ tidal food and matches the previous run exactly).
 - seeds 1–10 gave gate 7/10 with moon; seeds 11–30 gave 13/20. The 10-seed gate is noisy at ±1 seed.
 - body-selection with tidal food: PASS 8/12 (parts, segments, limbs, mouths, shells, size, land speed,
   defence); fins and water speed still not above drift. `runs/body-selection-tidalfood.txt`.
+
+## Gate measure fixed: grinder counts (author decision, 2026-11-11); rules frozen
+
+With bodies on, the gate counts kinds over size, diet, preferred temperature, water share, defence and
+grinder yes/no (`BODY_KIND_TRAITS`). The separate grinder diagnostic is gone. Rules and measure are frozen
+at this commit for the confirmatory run on fresh seeds 31–60 (seeds 1–30 were used for tuning).
