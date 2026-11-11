@@ -95,10 +95,16 @@ pub fn decide(
         // Food counts only if this creature can eat it (tough plants need a big mouth).
         let food = |c: CellId, sat: &mut Sat| {
             let i = c.0 as usize;
+            let mut f = env.plant[i];
             match env.tough.get(i) {
-                Some(&t) if a.tough_bite > Fx::ZERO => sat.add(env.plant[i], t),
-                _ => env.plant[i],
+                Some(&t) if a.tough_bite > Fx::ZERO => f = sat.add(f, t),
+                _ => {}
             }
+            match env.tidal.get(i) {
+                Some(&t) if a.tidal_bite > Fx::ZERO => f = sat.add(f, t),
+                _ => {}
+            }
+            f
         };
         let mut best = here;
         let mut best_food = food(here, sat);

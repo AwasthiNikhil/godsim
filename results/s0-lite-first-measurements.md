@@ -369,3 +369,24 @@ half is unchanged by construction and matched the previous run exactly).
 - Conclusion so far: in S0-lite the moon changes where life is born (a third of births on tidal flats)
   but not how many kinds there are. A moon effect on diversity would need a mechanism other than
   movement, e.g. food that exists only on flats, or a tide period near a generation.
+
+## Tidal food: a moon-only niche for walk-and-swim bodies (2026-11-11)
+
+Tidal food grows only on tidal flats (soft-plant rate from light), so it exists only with a moon. Eating
+it needs a body that both walks and swims: none below 0.25 for the slower of land and water speed, full
+bite from 0.5. Upkeep already charges for both speeds, so being amphibious pays only where this food is.
+Bodies-off hash unchanged. 10 seeds × 2,000 generations (`runs/batch-tidalfood/`; the no-moon half has no
+tidal food and matches the previous run exactly).
+
+| Seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | mean | ≥ 5 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Moon, gate | 4 | 10 | 5 | 6 | 5 | 9 | 4 | 4 | 5 | 7 | 5.9 | 7/10 |
+| Moon, + grinder yes/no | 7 | 9 | 5 | 9 | 7 | 12 | 6 | 5 | 7 | 7 | 7.4 | 10/10 |
+| No moon, gate | 2 | 4 | 4 | 7 | 7 | 4 | 3 | 7 | 3 | 7 | 4.8 | 4/10 |
+| No moon, + grinder yes/no | 3 | 5 | 4 | 8 | 8 | 4 | 4 | 9 | 4 | 10 | 5.9 | 5/10 |
+
+- First run where the moon adds kinds: +1.1 mean on the gate (6 seeds higher, 3 lower, 1 equal; sign test
+  p ≈ 0.51 at 10 seeds, so not yet significant). Water-share peaks 2.6 vs 2.2.
+- Births on tidal flats rose from 33% to 46%. 25–46% of creatures can eat tidal food with the moon (in
+  no-moon worlds 7–53% happen to have the speeds, unused).
+- Gate with moon: 7/10 (needs 8). With grinder yes/no counted: 10/10.

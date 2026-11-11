@@ -5,7 +5,7 @@ use crate::behaviour::{self, Buckets, Intent};
 use crate::body::BodyGraph;
 use crate::config::{BodyMode, InitialWorldConfig, SimParams};
 use crate::creature::Creature;
-use crate::environment::Environment;
+use crate::environment::{Environment, Habitat};
 use crate::fixed::{Fx, Sat};
 use crate::genome::Genome;
 use crate::hash;
@@ -46,6 +46,17 @@ impl World {
         env.update(0, &config, &params, &grid, &mut sat);
         if params.bodies != BodyMode::Off {
             env.tough = vec![Fx::from_int(4); env.plant.len()];
+            env.tidal = env
+                .habitat
+                .iter()
+                .map(|&h| {
+                    if h == Habitat::TidalFlat {
+                        Fx::from_int(4)
+                    } else {
+                        Fx::ZERO
+                    }
+                })
+                .collect();
         }
         let mut creatures: Vec<Creature> = (0..config.founders)
             .map(|f| {
@@ -246,6 +257,13 @@ impl World {
                 let room = sat.sub(c.abilities.tough_bite, take).max(Fx::ZERO);
                 let t = room.min(*tough);
                 *tough = sat.sub(*tough, t);
+                c.energy = sat.add(c.energy, t);
+            }
+            // Then tidal food, up to the tidal bite in total, if the body both walks and swims.
+            if let Some(tidal) = self.env.tidal.get_mut(cell) {
+                let room = sat.sub(c.abilities.tidal_bite, take).max(Fx::ZERO);
+                let t = room.min(*tidal);
+                *tidal = sat.sub(*tidal, t);
                 c.energy = sat.add(c.energy, t);
             }
         }

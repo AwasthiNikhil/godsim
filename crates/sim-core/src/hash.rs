@@ -24,7 +24,7 @@ pub fn state_hash(tick: u64, env: &Environment, creatures: &[Creature]) -> [u8; 
         }
     }
     // Tough plants exist only with bodies on; an empty field adds nothing, so S0-lite hashes are unchanged.
-    for &v in &env.tough {
+    for &v in env.tough.iter().chain(&env.tidal) {
         fx(&mut h, v);
     }
     for &hab in &env.habitat {

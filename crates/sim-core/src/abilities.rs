@@ -26,6 +26,9 @@ pub struct Abilities {
     /// Total plant energy per tick at most when tough plants are eaten too (zero without a big
     /// enough mouth). Tough plants fill what the soft bite left of this.
     pub tough_bite: Fx,
+    /// Total plant energy per tick at most when tidal food is eaten too (zero unless the body is
+    /// fast both on land and in water). Tidal food fills what the soft bite left of this.
+    pub tidal_bite: Fx,
     /// Energy cost per tick of having this body.
     pub upkeep: Fx,
 }
@@ -84,6 +87,7 @@ impl Abilities {
             reach,
             bite,
             tough_bite: Fx::ZERO,
+            tidal_bite: Fx::ZERO,
             upkeep,
         }
     }
@@ -112,6 +116,7 @@ impl Abilities {
     /// - bite as before, but a body without a mouth grazes at 30%
     /// - tough plants: none below 0.8 total mouth length, rising to the full bite at 1.8;
     ///   the same grip halves the soft-plant bite at most
+    /// - tidal food: none below 0.25 for the slower of land and water speed, full bite from 0.5
     /// - upkeep as before, with speed = land + water speed, so being good at both costs more
     ///   than being good at one (S0 tuning: with the faster of the two, everyone was amphibious)
     pub fn from_body(t: &BodyTree, g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
@@ -184,6 +189,11 @@ impl Abilities {
         let half = sat.div(grip, Fx::from_int(2));
         let soft = sat.sub(Fx::ONE, half);
         a.bite = sat.mul(a.bite, soft);
+        // Tidal food (on tidal flats, exposed and covered by turns): needs a body that both walks
+        // and swims. None below 0.25 for the slower of the two speeds, full bite from 0.5.
+        let both = sat.sub(land.min(water), Fx::ratio(1, 4));
+        let both = sat.mul(both, Fx::from_int(4)).clamp(Fx::ZERO, Fx::ONE);
+        a.tidal_bite = sat.mul(a.bite, both);
         a.land_speed = sat.div(land, scale);
         a.water_speed = sat.div(water, scale);
         a.defence = shell_share.min(Fx::ratio(6, 10));

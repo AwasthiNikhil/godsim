@@ -125,7 +125,11 @@ pub const GRIP_KIND_TRAITS: [(&str, f64, f64); 6] = [
 
 fn grip_kind_values(c: &Creature) -> Vec<f64> {
     let mut v = body_kind_values(c);
-    v.push(if c.abilities.tough_bite > Fx::ZERO { 1.0 } else { 0.0 });
+    v.push(if c.abilities.tough_bite > Fx::ZERO {
+        1.0
+    } else {
+        0.0
+    });
     v
 }
 
@@ -466,12 +470,20 @@ fn run_one(
         .iter()
         .filter(|c| c.abilities.tough_bite > Fx::ZERO)
         .count();
+    let tidal_eaters = w
+        .creatures()
+        .iter()
+        .filter(|c| c.abilities.tidal_bite > Fx::ZERO)
+        .count();
+    let pop = w.creatures().len().max(1) as f64;
     let _ = writeln!(
         r,
-        "\nfood per cell (cap 12): soft {:.2}  tough {:.2}  — tough-plant eaters {:.0}% of population",
+        "\nfood per cell (cap 12): soft {:.2}  tough {:.2}  tidal {:.2}  — tough-plant eaters {:.0}%, tidal-food eaters {:.0}% of population",
         mean(&env.plant),
         mean(&env.tough),
-        eaters as f64 * 100.0 / w.creatures().len().max(1) as f64
+        mean(&env.tidal),
+        eaters as f64 * 100.0 / pop,
+        tidal_eaters as f64 * 100.0 / pop
     );
     let _ = writeln!(r, "\nhabitat attribution (births over the whole run)");
     for (h, n) in &by_hab {

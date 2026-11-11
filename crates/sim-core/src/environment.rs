@@ -48,6 +48,9 @@ pub struct Environment {
     pub plant: Vec<Fx>,
     /// Tough plants (bodies on only; empty otherwise): slow-growing, dry land, need a big mouth.
     pub tough: Vec<Fx>,
+    /// Tidal food (bodies on only; empty otherwise): grows only on tidal flats, so only with a moon;
+    /// needs a body that both walks and swims.
+    pub tidal: Vec<Fx>,
     pub nutrients: Vec<Fx>,
     /// Current tide offset added to sea level, from the moon.
     pub tide: Fx,
@@ -67,6 +70,7 @@ impl Environment {
             habitat: vec![Habitat::Lowland; n],
             plant: vec![Fx::ZERO; n],
             tough: Vec::new(),
+            tidal: Vec::new(),
             nutrients: vec![Fx::ZERO; n],
             tide: Fx::ZERO,
             temp_offset: Fx::ZERO,
@@ -152,6 +156,13 @@ impl Environment {
             let g = sat.mul(self.light[i], self.habitat[i].tough_fertility());
             let g = sat.div(g, Fx::from_int(16 * p.tick_scale as i32));
             self.tough[i] = sat.add(self.tough[i], g).min(p.plant_cap);
+        }
+        // Tidal food grows at the soft rate on tidal flats only, from light alone. [Provisional]
+        for i in 0..self.tidal.len() {
+            if self.habitat[i] == Habitat::TidalFlat {
+                let g = sat.div(self.light[i], Fx::from_int(8 * p.tick_scale as i32));
+                self.tidal[i] = sat.add(self.tidal[i], g).min(p.plant_cap);
+            }
         }
     }
 }
