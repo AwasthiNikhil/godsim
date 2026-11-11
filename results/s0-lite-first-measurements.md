@@ -414,3 +414,20 @@ tidal food and matches the previous run exactly).
 With bodies on, the gate counts kinds over size, diet, preferred temperature, water share, defence and
 grinder yes/no (`BODY_KIND_TRAITS`). The separate grinder diagnostic is gone. Rules and measure are frozen
 at this commit for the confirmatory run on fresh seeds 31–60 (seeds 1–30 were used for tuning).
+
+### Confirmatory run on fresh seeds 31–60 (rules frozen at tag `s0-bodies-frozen`)
+
+`batch --configs bodies,bodies-tides-off --first-seed 31 --seeds 30 --generations 2000` (`runs/confirm-31-60/`).
+
+| Config | Survived | ≥ 5 kinds | Mean kinds | Kinds per seed (31–60) |
+|---|---|---|---|---|
+| bodies (moon) | 30/30 | **27/30 (90%)** | 6.43 | 5 4 7 8 4 6 8 11 5 4 5 7 8 6 6 5 12 6 7 5 6 5 6 7 5 6 8 8 5 8 |
+| bodies, no moon | 30/30 | 22/30 (73%) | 5.97 | 9 4 5 8 8 4 3 4 6 7 8 5 4 8 6 4 5 5 9 6 8 6 6 6 7 4 3 6 8 7 |
+
+- **S0-lite with bodies: survival PASS (30/30), diversity PASS (90% of seeds ≥ 5 kinds; threshold 80%).**
+  Fewest kinds in any moon world: 4.
+- By blocks of 10 seeds: 7, 10, 10. A single 10-seed run can still land at 7/10; the 30-seed rate is the
+  better estimate.
+- Moon vs no moon on fresh seeds: moon higher in 14, lower in 12 (p ≈ 0.85). **The moon's effect on kinds
+  did not replicate.** It does still change where life is born (45% of births on tidal flats vs 0%).
+  E3's diversity claim stays open; the rules were not tuned further to chase it.
