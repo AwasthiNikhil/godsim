@@ -345,6 +345,6 @@ bodies-off hash unchanged, `dbf5015fe655dc63`). 10 seeds × 2,000 generations (`
   1.8 vs 1.9). Moon − no moon per seed: 5 higher, 1 lower, 4 equal (sign test p ≈ 0.22, not significant).
 - Total kinds, moon vs no moon: mean 4.9 vs 4.8, per seed 4 higher / 6 lower. **The moon still does not
   measurably add kinds.**
-- First time preferred temperature shows 2 peaks (moon 3/10 seeds, no moon 3/10).
+- First time preferred temperature shows 2 peaks (moon 3/10 seeds, no moon 2/10).
 - body-selection still PASS but 4/12 (was 7/12): parts, limbs, mouths, size. Speeds and segments are no
   longer selected above drift, as expected once speed costs more.
