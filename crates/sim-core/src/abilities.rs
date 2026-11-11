@@ -112,7 +112,8 @@ impl Abilities {
     /// - bite as before, but a body without a mouth grazes at 30%
     /// - tough plants: none below 0.8 total mouth length, rising to the full bite at 1.8;
     ///   the same grip halves the soft-plant bite at most
-    /// - upkeep as before, with speed = the faster of land and water speed
+    /// - upkeep as before, with speed = land + water speed, so being good at both costs more
+    ///   than being good at one (S0 tuning: with the faster of the two, everyone was amphibious)
     pub fn from_body(t: &BodyTree, g: &Genome, scale: Fx, sat: &mut Sat) -> Abilities {
         let mut area = Fx::ZERO;
         let mut shell = Fx::ZERO;
@@ -164,7 +165,7 @@ impl Abilities {
         // Reuse the stand-in formulas for bite, reach and upkeep, fed with the body's values.
         let stand_in = Genome {
             size,
-            speed: land.max(water),
+            speed: sat.add(land, water),
             sense_range: sense,
             body: None,
             ..g.clone()

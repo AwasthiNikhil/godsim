@@ -324,3 +324,27 @@ with a binary axis: grinder (mouth can eat tough plants) or not. Gate measure un
 - The graded grip count (8/10) was partly the step artefact: the strict version gives 5/10.
 - The moon does not raise diversity with bodies on (no moon 6/10 vs moon 5/10 on this measure).
 - Seed 4 still reaches 10 kinds with a binary axis, so its high count comes from the other axes.
+
+## Why the moon adds no diversity, and upkeep for both speeds (2026-11-11)
+
+Correction: tides never raised diversity, even before bodies (2.3 vs 2.1 kinds, section above). With
+bodies, nearly every creature had land speed ≈ water speed (water share one peak at ~0.5 in most
+seeds): upkeep charged only the faster speed, so being good at both was free and tidal flats were just
+a rich strip anyone could use. Change: movement upkeep uses land + water speed (`from_body` only;
+bodies-off hash unchanged, `dbf5015fe655dc63`). 10 seeds × 2,000 generations (`runs/batch-sumspeed/`).
+
+| Seed | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | mean | ≥ 5 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Moon, gate | 5 | 3 | 8 | 4 | 4 | 6 | 6 | 5 | 2 | 6 | 4.9 | 6/10 |
+| Moon, + grinder yes/no | 6 | 4 | 7 | 4 | 7 | 8 | 7 | 6 | 3 | 7 | 5.9 | 7/10 |
+| No moon, gate | 2 | 4 | 4 | 7 | 7 | 4 | 3 | 7 | 3 | 7 | 4.8 | 4/10 |
+| No moon, + grinder yes/no | 3 | 5 | 4 | 8 | 8 | 4 | 4 | 9 | 4 | 10 | 5.9 | 5/10 |
+
+- Gate with moon: 3/10 → 6/10 (mean 3.8 → 4.9). All 20 worlds survived.
+- Walker/swimmer now splits: water-share peaks per seed average 2.7 with moon, 2.2 without (old rule
+  1.8 vs 1.9). Moon − no moon per seed: 5 higher, 1 lower, 4 equal (sign test p ≈ 0.22, not significant).
+- Total kinds, moon vs no moon: mean 4.9 vs 4.8, per seed 4 higher / 6 lower. **The moon still does not
+  measurably add kinds.**
+- First time preferred temperature shows 2 peaks (moon 3/10 seeds, no moon 3/10).
+- body-selection still PASS but 4/12 (was 7/12): parts, limbs, mouths, size. Speeds and segments are no
+  longer selected above drift, as expected once speed costs more.
