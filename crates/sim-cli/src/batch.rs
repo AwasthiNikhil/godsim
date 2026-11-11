@@ -512,11 +512,20 @@ fn run_one(
     }
 }
 
-pub fn batch(base: InitialWorldConfig, configs: &[&str], seeds: u64, generations: u64, dir: &str) {
+pub fn batch(
+    base: InitialWorldConfig,
+    configs: &[&str],
+    first_seed: u64,
+    seeds: u64,
+    generations: u64,
+    dir: &str,
+) {
     let base = &base;
     let jobs: Vec<(String, (InitialWorldConfig, SimParams), u64)> = configs
         .iter()
-        .flat_map(|&c| (1..=seeds).map(move |s| (c.to_string(), named_config(c, base), s)))
+        .flat_map(|&c| {
+            (first_seed..first_seed + seeds).map(move |s| (c.to_string(), named_config(c, base), s))
+        })
         .collect();
     let next = AtomicUsize::new(0);
     let results = Mutex::new(Vec::new());

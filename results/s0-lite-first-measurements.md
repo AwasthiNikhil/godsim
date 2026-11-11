@@ -390,3 +390,21 @@ tidal food and matches the previous run exactly).
 - Births on tidal flats rose from 33% to 46%. 25–46% of creatures can eat tidal food with the moon (in
   no-moon worlds 7–53% happen to have the speeds, unused).
 - Gate with moon: 7/10 (needs 8). With grinder yes/no counted: 10/10.
+
+### Tidal food at 30 seeds (seeds 11–30 added: `runs/batch-tidalfood-11-30/`, `batch --first-seed 11 --seeds 20`)
+
+| Measure (30 seeds) | Moon mean | Moon ≥ 5 | No moon mean | No moon ≥ 5 | Moon higher / lower | Sign test p |
+|---|---|---|---|---|---|---|
+| Gate kinds | 5.77 | 20/30 (67%) | 5.10 | 15/30 (50%) | 15 / 8 | 0.21 |
+| + grinder yes/no | 7.20 | 30/30 | 6.10 | 21/30 | 18 / 7 | 0.043 |
+| Water-share peaks | 2.53 | – | 2.13 | – | 13 / 5 | 0.096 |
+
+- All 60 worlds survived.
+- Gate with moon: 67% of seeds reach 5 kinds; the threshold is 80% (8/10). **Still FAIL on the gate measure.**
+  With grinder yes/no counted: 100%.
+- The moon effect points the same way on all three measures, but only one reaches p ≤ 0.05, and three
+  measures were looked at, so that p is not strong evidence alone. Honest reading: the moon probably adds
+  about one kind; 30 seeds do not prove it.
+- seeds 1–10 gave gate 7/10 with moon; seeds 11–30 gave 13/20. The 10-seed gate is noisy at ±1 seed.
+- body-selection with tidal food: PASS 8/12 (parts, segments, limbs, mouths, shells, size, land speed,
+  defence); fins and water speed still not above drift. `runs/body-selection-tidalfood.txt`.

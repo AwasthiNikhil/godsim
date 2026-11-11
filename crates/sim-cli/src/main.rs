@@ -3,7 +3,7 @@
 //!   sim-cli determinism [--ticks N] [--seed S] [--width W --height H]
 //!   sim-cli timing      [--ticks N] [--warmup N] [--repeats R] [--seed S]
 //!   sim-cli export      [--ticks N] [--every K] [--seed S] [--bodies] [--width W --height H] [--out FILE]
-//!   sim-cli batch       [--seeds 10] [--generations 2000] [--configs base,tides-off,bodies,bodies-tides-off] [--width W --height H] [--out DIR]
+//!   sim-cli batch       [--first-seed 1] [--seeds 10] [--generations 2000] [--configs base,tides-off,bodies,bodies-tides-off] [--width W --height H] [--out DIR]
 //!   sim-cli body-selection [--seeds 10] [--generations 500] [--width W --height H]
 //!   sim-cli silhouettes [--generations 300] [--lineages 3] [--per 10] [--seed S] [--width W --height H] [--out DIR]
 //!   sim-cli chase-clips [--scales 1,2,4,8] [--clips N] [--warmup N] [--window N] [--seed S] [--out DIR]
@@ -186,6 +186,7 @@ fn main() {
             batch::batch(
                 config(&args, 64, 32),
                 &configs,
+                flag(&args, "--first-seed", 1),
                 flag(&args, "--seeds", 10),
                 flag(&args, "--generations", 2_000),
                 text(&args, "--out", "runs/batch"),
